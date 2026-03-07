@@ -1,18 +1,21 @@
 """User model"""
-from app.extensions import db
+from mongoengine import Document, StringField, EmailField, DateTimeField, ReferenceField, ListField
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
-class User(db.Model):
-    __tablename__ = 'users'
+class User(Document):
+    """User document"""
+    meta = {
+        'collection': 'users',
+        'indexes': ['email', 'username']
+    }
     
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    email = EmailField(required=True, unique=True)
+    username = StringField(required=True, unique=True, max_length=80)
+    password_hash = StringField(required=True)
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
     
     def set_password(self, password):
         """Hash and set password"""
@@ -25,7 +28,7 @@ class User(db.Model):
     def to_dict(self):
         """Convert user to dictionary"""
         return {
-            'id': self.id,
+            'id': str(self.id),
             'email': self.email,
             'username': self.username,
             'created_at': self.created_at.isoformat() if self.created_at else None

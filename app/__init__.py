@@ -1,16 +1,14 @@
 from flask import Flask, jsonify
 from .config import Config
-from .extensions import db, migrate, jwt, cors
+from .extensions import init_db, jwt, cors
 
 
 def create_app(config_class=Config):
-    """Application factory pattern"""
     app = Flask(__name__)
     app.config.from_object(config_class)
     
     # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
+    init_db(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
     
@@ -27,14 +25,20 @@ def create_app(config_class=Config):
     # Register shell context for flask shell command
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import User
-        return {'db': db, 'User': User}
+        from app.models import User, Role, Issue, EmailCaseType, EmailTemplate, TemplateOption
+        return {
+            'User': User,
+            'Role': Role,
+            'Issue': Issue,
+            'EmailCaseType': EmailCaseType,
+            'EmailTemplate': EmailTemplate,
+            'TemplateOption': TemplateOption
+        }
     
     return app
 
 
 def register_error_handlers(app):
-    """Register error handlers"""
     
     @app.errorhandler(404)
     def not_found(error):
@@ -42,7 +46,6 @@ def register_error_handlers(app):
     
     @app.errorhandler(500)
     def internal_error(error):
-        db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
     
     @app.errorhandler(400)
