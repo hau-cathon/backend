@@ -1,10 +1,13 @@
 """Flask extensions initialization"""
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from mongoengine import connect
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
-db = SQLAlchemy()
-migrate = Migrate()
 jwt = JWTManager()
 cors = CORS()
+
+def init_db(app):
+    """Initialize MongoDB connection"""
+    mongodb_uri = app.config['MONGODB_URI']
+    mongodb_db = app.config['MONGODB_DB']
+    connect(mongodb_db, host=mongodb_uri)

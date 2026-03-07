@@ -11,13 +11,12 @@ class Config:
     # Flask
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", 
-        "sqlite:///app.db"  # fallback to SQLite for quick start
+    # MongoDB
+    MONGODB_URI = os.getenv(
+        "MONGODB_URI", 
+        "mongodb://localhost:27017"  # local MongoDB fallback
     )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ECHO = False
+    MONGODB_DB = os.getenv("MONGODB_DB", "pieski_db")
     
     # JWT
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-secret-key-change-in-production")
