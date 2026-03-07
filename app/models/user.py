@@ -1,3 +1,4 @@
+"""User model"""
 from app.extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,12 +15,15 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def set_password(self, password):
+        """Hash and set password"""
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
+        """Check if password matches hash"""
         return check_password_hash(self.password_hash, password)
     
     def to_dict(self):
+        """Convert user to dictionary"""
         return {
             'id': self.id,
             'email': self.email,

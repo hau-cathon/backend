@@ -1,28 +1,34 @@
+"""Authentication service"""
 from flask import jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token
 from app.models import User, db
 
 
 def register_user(data):
+    """Register a new user"""
     email = data.get('email')
     username = data.get('username')
     password = data.get('password')
-
+    
+    # Validation
     if not email or not username or not password:
         return jsonify({'error': 'Missing required fields'}), 400
-
+    
+    # Check if user exists
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 400
     
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already taken'}), 400
-
+    
+    # Create new user
     user = User(email=email, username=username)
     user.set_password(password)
     
     db.session.add(user)
     db.session.commit()
-
+    
+    # Generate tokens
     access_token = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)
     
@@ -35,6 +41,7 @@ def register_user(data):
 
 
 def login_user(data):
+    """Login user"""
     email = data.get('email')
     password = data.get('password')
     

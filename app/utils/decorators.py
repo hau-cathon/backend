@@ -6,7 +6,7 @@ from app.models import User
 
 
 def admin_required(fn):
-
+    """Decorator to require admin privileges"""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user_id = get_jwt_identity()
