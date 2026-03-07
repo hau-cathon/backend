@@ -1,0 +1,7 @@
+baza danych
+
+templatki
+zgłoszenia
+użytkownicy
+role
+dubling
