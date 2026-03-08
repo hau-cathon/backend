@@ -35,7 +35,7 @@ def reminder_notifier():
         now = datetime.utcnow()
         issues = Issue.objects(reminder_time__lte=now)
         for issue in issues:
-            print(f"Reminder notification for Issue ID: {issue.id}")
+            #print(f"Reminder notification for Issue ID: {issue.id}")
             socketio.emit('reminder', {
                 'issue_id': str(issue.id),
                 'message': f'Reminder for issue {issue.event_type} ({issue.species})',
