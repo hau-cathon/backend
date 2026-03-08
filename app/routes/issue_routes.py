@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request, current_app
 from app.models.issue import Issue
 from app.models.user import User
-from datetime import datetime
+from app.services.action_history_service import ActionHistoryService
 from datetime import datetime, timedelta
 from mongoengine.errors import ValidationError, DoesNotExist
 
@@ -72,26 +72,23 @@ def get_issue(issue_id):
 def create_issue():
     """Create new issue"""
     try:
-        data = request.get_json()
-        current_app.logger.info(f"Creating issue with data: {data}")
-        
+        data = request.get_json() or {}
+
         # Required fields validation
         required_fields = ['event_type', 'species', 'incident_address']
         for field in required_fields:
-            if field not in data:
+            if not str(data.get(field, '')).strip():
                 return jsonify({
                     'status': 'error',
                     'error': f'Missing required field: {field}'
                 }), 400
-        
-        # Create issue
+
         reminder_time = data.get('reminder_time')
         if reminder_time:
             reminder_time = datetime.fromisoformat(reminder_time)
         else:
             reminder_time = datetime.utcnow() + timedelta(days=7)
-        
-        current_app.logger.info(f"Creating Issue object...")
+
         issue = Issue(
             event_type=data['event_type'],
             species=data['species'],
@@ -105,15 +102,31 @@ def create_issue():
             status=data.get('status', 'open'),
             reminder_time=reminder_time
         )
-        
-        current_app.logger.info(f"Saving issue...")
+
         issue.save()
-        current_app.logger.info(f"Issue saved with ID: {issue.id}")
-        
-        current_app.logger.info(f"Building title...")
-        issue.title = issue.build_title()
+
+        # Preserve frontend-provided ticket title/number when present.
+        custom_title = str(data.get('title') or '').strip()
+        issue.title = custom_title or issue.build_title()
         issue.save()
-        current_app.logger.info(f"Issue title: {issue.title}")
+
+        try:
+            ActionHistoryService.create_action(
+                ticket_id=str(issue.id),
+                action_type='issue_created',
+                label='Utworzono zgłoszenie',
+                detail='Nowe zgłoszenie zostało zapisane w systemie.',
+                timeline_type='info',
+                source='backend.issue_routes',
+                metadata={
+                    'issue_id': str(issue.id),
+                    'event_type': issue.event_type,
+                    'status': issue.status,
+                },
+            )
+        except Exception:
+            # Logging action history should not block issue creation.
+            pass
         
         # Check for duplicates asynchronously (don't block response)
         try:
@@ -158,7 +171,8 @@ def update_issue(issue_id):
             issue.event_type = data['event_type']
         if 'species' in data:
             issue.species = data['species']
-            issue.title = issue.build_title()
+            if not issue.title:
+                issue.title = issue.build_title()
         if 'animal_count' in data:
             issue.animal_count = data['animal_count']
         if 'options' in data:
@@ -191,6 +205,42 @@ def update_issue(issue_id):
         
         issue.updated_at = datetime.utcnow()
         issue.save()
+
+        try:
+            updated_fields = sorted(list(data.keys())) if data else []
+            if 'status' in data:
+                timeline_type = 'info'
+                if data.get('status') in ['resolved', 'closed']:
+                    timeline_type = 'success'
+                elif data.get('status') == 'duplicate':
+                    timeline_type = 'warning'
+
+                label = 'Zmieniono status zgłoszenia'
+                detail = f"Nowy status: {data.get('status')}"
+            else:
+                timeline_type = 'info'
+                label = 'Zaktualizowano zgłoszenie'
+                detail = (
+                    f"Zmodyfikowano pola: {', '.join(updated_fields)}"
+                    if updated_fields
+                    else 'Zaktualizowano dane zgłoszenia.'
+                )
+
+            ActionHistoryService.create_action(
+                ticket_id=str(issue.id),
+                action_type='issue_updated',
+                label=label,
+                detail=detail,
+                timeline_type=timeline_type,
+                source='backend.issue_routes',
+                metadata={
+                    'issue_id': str(issue.id),
+                    'updated_fields': updated_fields,
+                },
+            )
+        except Exception:
+            # Logging action history should not block issue updates.
+            pass
         
         return jsonify({
             'status': 'success',

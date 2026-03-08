@@ -1,111 +1,217 @@
-"""Email reading routes"""
-from flask import Blueprint, jsonify, request
+"""Email routes for inbox checks and ticket communication history."""
 from datetime import datetime
-from ..utils.email_reader import read_unread_emails, mark_as_read, extract_ticket_number
-from ..utils.SMTP import send_email
-from ..models.email_message import EmailMessage
-from ..models.issue import Issue
+from bson import ObjectId
+from mongoengine.queryset.visitor import Q
 
-email_bp = Blueprint('email', __name__)
+from flask import Blueprint, jsonify, request, current_app
+
+from app.models.email_message import EmailMessage
+from app.models.issue import Issue
+from app.services.action_history_service import ActionHistoryService
+from app.utils.SMTP import send_email
+from ..utils.email_reader import read_unread_emails, mark_as_read
+
+email_bp = Blueprint('email_api', __name__)
 
 
-@email_bp.route('/check', methods=['GET'])
+def _is_smtp_configured() -> bool:
+    return bool(
+        current_app.config.get('MAIL_SERVER')
+        and current_app.config.get('MAIL_PORT')
+        and current_app.config.get('MAIL_USERNAME')
+        and current_app.config.get('MAIL_PASSWORD')
+    )
+
+
+def _safe_log_action(**kwargs):
+    try:
+        ActionHistoryService.create_action(**kwargs)
+    except Exception:
+        # Action history must never break API response.
+        pass
+
+
+def _resolve_issue_ref(ticket_ref):
+    value = str(ticket_ref or '').strip()
+    if not value:
+        return None
+
+    issue = None
+    if ObjectId.is_valid(value):
+        issue = Issue.objects(id=value).first()
+
+    if issue is None:
+        issue = Issue.objects(title=value).first()
+
+    return issue
+
+
+@email_bp.route('/ticket/<ticket_id>/history', methods=['GET'], endpoint='ticket_history')
+def get_ticket_email_history(ticket_id):
+    """Get persisted email history for a ticket."""
+    try:
+        issue = _resolve_issue_ref(ticket_id)
+        query = Q(ticket_id=ticket_id)
+
+        if issue is not None:
+            query = query | Q(issue=issue)
+            if issue.title:
+                query = query | Q(ticket_id=issue.title)
+
+        emails = EmailMessage.objects(query).order_by('-created_at')
+        return jsonify({
+            'status': 'success',
+            'count': len(emails),
+            'emails': [email.to_dict() for email in emails],
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+        }), 500
+
+
+# @email_bp.route('/ticket/<ticket_id>/send', methods=['POST'], endpoint='ticket_send')
+# def send_ticket_email(ticket_id):
+#     """Send (or mock-send in dev) email for a ticket and persist it."""
+#     try:
+#         data = request.get_json() or {}
+#         required_fields = ['to_email', 'subject', 'body']
+#         for field in required_fields:
+#             if not str(data.get(field, '')).strip():
+#                 return jsonify({
+#                     'status': 'error',
+#                     'error': f'Missing required field: {field}',
+#                 }), 400
+
+#         to_email = str(data['to_email']).strip()
+#         subject = str(data['subject']).strip()
+#         body = str(data['body']).strip()
+#         html_body = data.get('html_body')
+#         cc_emails = str(data.get('cc_emails', '')).strip() or None
+#         is_automated = bool(data.get('is_automated', False))
+#         issue = _resolve_issue_ref(ticket_id)
+
+#         stored_ticket_id = str(ticket_id)
+#         if issue is not None:
+#             stored_ticket_id = str(issue.id)
+
+#         smtp_configured = _is_smtp_configured()
+#         delivery_mode = 'mock'
+#         sent_ok = True
+
+#         if smtp_configured:
+#             sent_ok = send_email(to_email, subject, body, html_body=html_body)
+#             delivery_mode = 'smtp' if sent_ok else 'smtp_failed'
+
+#         email = EmailMessage(
+#             ticket_id=stored_ticket_id,
+#             issue=issue,
+#             direction='outbound',
+#             from_email=(current_app.config.get('MAIL_USERNAME') or 'noreply@animalhelper.local'),
+#             to_email=to_email,
+#             cc_emails=cc_emails,
+#             subject=subject,
+#             body=body,
+#             html_body=html_body,
+#             is_automated=is_automated,
+#             metadata={
+#                 'delivery_mode': delivery_mode,
+#                 'smtp_configured': smtp_configured,
+#                 'delivery_success': sent_ok,
+#             },
+#         )
+#         email.save()
+
+#         timeline_type = 'success' if sent_ok else 'alert'
+#         _safe_log_action(
+#             ticket_id=stored_ticket_id,
+#             action_type='email_sent',
+#             label='Wyslano wiadomosc email' if sent_ok else 'Nieudana wysylka email',
+#             detail=f'Do: {to_email} | Temat: {subject}',
+#             timeline_type=timeline_type,
+#             source='backend.email_routes',
+#             metadata={
+#                 'email_id': str(email.id),
+#                 'to_email': to_email,
+#                 'subject': subject,
+#                 'delivery_mode': delivery_mode,
+#             },
+#         )
+
+#         if not sent_ok:
+#             return jsonify({
+#                 'status': 'error',
+#                 'error': 'Email could not be sent via SMTP',
+#                 'email_id': str(email.id),
+#                 'delivery_mode': delivery_mode,
+#             }), 502
+
+#         return jsonify({
+#             'status': 'success',
+#             'message': 'Email saved and sent' if smtp_configured else 'Email saved (mock delivery)',
+#             'email_id': str(email.id),
+#             'delivery_mode': delivery_mode,
+#         }), 200
+
+#     except Exception as e:
+#         return jsonify({
+#             'status': 'error',
+#             'error': str(e),
+#         }), 500
+
+
+@email_bp.route('/check', methods=['GET'], endpoint='check_mailbox')
 def check_emails():
     """Sprawdza i odczytuje nowe emaile, automatycznie przypisując do zgłoszeń"""
     try:
         emails = read_unread_emails()
-        processed = []
-        errors = []
-        
-        for email_data in emails:
-            try:
-                # Znajdź numer zgłoszenia
-                ticket_number = email_data.get('ticket_number')
-                
-                if ticket_number:
-                    # Znajdź zgłoszenie po numerze
-                    issue = Issue.objects(ticket_number=ticket_number).first()
-                    
-                    if issue:
-                        # Zapisz email do bazy
-                        email_msg = EmailMessage(
-                            ticket_id=str(issue.id),
-                            direction='inbound',
-                            from_email=email_data['sender'],
-                            to_email='system@example.com',  # TODO: get from config
-                            subject=email_data['subject'],
-                            body=email_data['full_body'],
-                            external_id=email_data['email_id'],
-                            read_at=datetime.utcnow()
-                        )
-                        email_msg.save()
-                        
-                        # Oznacz jako przeczytany
-                        mark_as_read(email_data['email_id'])
-                        
-                        processed.append({
-                            'email_id': email_data['email_id'],
-                            'ticket_id': str(issue.id),
-                            'ticket_number': ticket_number,
-                            'status': 'assigned'
-                        })
-                    else:
-                        errors.append({
-                            'email_id': email_data['email_id'],
-                            'issue': f'Ticket {ticket_number} not found',
-                            'subject': email_data['subject']
-                        })
-                else:
-                    errors.append({
-                        'email_id': email_data['email_id'],
-                        'issue': 'No ticket number found in email',
-                        'subject': email_data['subject']
-                    })
-                    
-            except Exception as e:
-                errors.append({
-                    'email_id': email_data.get('email_id', 'unknown'),
-                    'error': str(e)
-                })
-        
-        return jsonify({
-            'status': 'success',
-            'total': len(emails),
-            'processed': len(processed),
-            'errors': len(errors),
-            'details': {'processed': processed, 'errors': errors}
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
 
+        persisted_count = 0
+        for item in emails:
+            ticket_ref = str(item.get('ticket_number') or '').strip()
+            if not ticket_ref:
+                continue
 
-@email_bp.route('/ticket/<ticket_identifier>/history', methods=['GET'])
-def get_ticket_email_history(ticket_identifier):
-    """Pobiera historię maili dla danego zgłoszenia (po ID lub ticket_number)"""
-    try:
-        # Spróbuj znaleźć issue po ticket_number lub MongoDB ID
-        issue = Issue.objects(ticket_number=ticket_identifier).first()
-        if not issue:
-            from bson import ObjectId
-            if ObjectId.is_valid(ticket_identifier):
-                issue = Issue.objects(id=ticket_identifier).first()
-        
-        if not issue:
-            return jsonify({
-                'status': 'error',
-                'error': 'Zgłoszenie nie znalezione'
-            }), 404
-        
-        emails = EmailMessage.objects(ticket_id=str(issue.id)).order_by('-created_at')
+            external_id = str(item.get('email_id') or '').strip() or None
+            if external_id and EmailMessage.objects(external_id=external_id).first():
+                continue
+
+            email_doc = EmailMessage(
+                ticket_id=ticket_ref,
+                direction='inbound',
+                from_email=str(item.get('from') or 'unknown@sender.local'),
+                to_email=(current_app.config.get('MAIL_USERNAME') or 'noreply@animalhelper.local'),
+                subject=str(item.get('subject') or '(brak tematu)'),
+                body=str(item.get('body') or ''),
+                external_id=external_id,
+                is_automated=False,
+                metadata={
+                    'mailbox_date': item.get('date'),
+                    'raw_ticket_number': item.get('ticket_number'),
+                },
+            )
+            email_doc.save()
+            persisted_count += 1
+
+            _safe_log_action(
+                ticket_id=ticket_ref,
+                action_type='email_received',
+                label='Odebrano wiadomosc email',
+                detail=f"Od: {email_doc.from_email} | Temat: {email_doc.subject}",
+                timeline_type='info',
+                source='backend.email_routes',
+                metadata={
+                    'email_id': str(email_doc.id),
+                    'external_id': email_doc.external_id,
+                },
+            )
         
         return jsonify({
             'status': 'success',
             'count': len(emails),
-            'emails': [email.to_dict() for email in emails]
+            'persisted': persisted_count,
+            'emails': emails
         }), 200
         
     except Exception as e:
@@ -115,82 +221,19 @@ def get_ticket_email_history(ticket_identifier):
         }), 500
 
 
-@email_bp.route('/ticket/<ticket_identifier>/send', methods=['POST'])
-def send_ticket_email(ticket_identifier):
-    """Wysyła email w kontekście zgłoszenia (po ID lub ticket_number)"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                'status': 'error',
-                'error': 'Brak danych'
-            }), 400
-        
-        # Walidacja
-        to_email = data.get('to_email')
-        subject = data.get('subject')
-        body = data.get('body')
-        html_body = data.get('html_body')
-        
-        if not all([to_email, subject, body]):
-            return jsonify({
-                'status': 'error',
-                'error': 'Wymagane pola: to_email, subject, body'
-            }), 400
-        
-        # Znajdź zgłoszenie po ticket_number lub MongoDB ID
-        issue = Issue.objects(ticket_number=ticket_identifier).first()
-        if not issue:
-            from bson import ObjectId
-            if ObjectId.is_valid(ticket_identifier):
-                issue = Issue.objects(id=ticket_identifier).first()
-        if not issue:
-            return jsonify({
-                'status': 'error',
-                'error': 'Zgłoszenie nie znalezione'
-            }), 404
-        
-        # Dodaj numer zgłoszenia do tematu jeśli istnieje
-        if issue.ticket_number:
-            subject = f"[{issue.ticket_number}] {subject}"
-        
-        # Zapisz email w bazie (bez realnego wysyłania)
-        from flask import current_app
-        from_email = current_app.config.get('MAIL_USERNAME') or 'system@pieski.pl'
-        
-        email_msg = EmailMessage(
-            ticket_id=str(issue.id),
-            direction='outbound',
-            from_email=from_email,
-            to_email=to_email,
-            cc_emails=data.get('cc_emails'),
-            subject=subject,
-            body=body,
-            html_body=html_body,
-            is_automated=data.get('is_automated', False),
-            created_at=datetime.utcnow()
-        )
-        email_msg.save()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Email zapisany',
-            'email_id': str(email_msg.id),
-            'note': 'Email został zapisany w bazie danych (nie wysłano realnie)'
-        }), 200
-            
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
-
-
-@email_bp.route('/mark-read/<email_id>', methods=['POST'])
+@email_bp.route('/mark-read/<email_id>', methods=['POST'], endpoint='mark_read')
 def mark_email_read(email_id):
     """Oznacza email jako przeczytany"""
     try:
+        email_doc = EmailMessage.objects(id=email_id).first()
+        if email_doc:
+            email_doc.read_at = datetime.utcnow()
+            email_doc.save()
+            return jsonify({
+                'status': 'success',
+                'message': 'Email oznaczony jako przeczytany'
+            }), 200
+
         success = mark_as_read(email_id)
         
         if success:
