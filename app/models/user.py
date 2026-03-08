@@ -1,32 +1,29 @@
-"""User model"""
 from mongoengine import Document, StringField, EmailField, DateTimeField, ReferenceField, ListField
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from app.models.role import Role
 
 
 class User(Document):
-    """User document"""
     meta = {
         'collection': 'users',
-        'indexes': ['email', 'username']
+        'indexes': ['email', 'username', 'role']
     }
     
     email = EmailField(required=True, unique=True)
     username = StringField(required=True, unique=True, max_length=80)
     password_hash = StringField(required=True)
+    role = ReferenceField(Role required=True)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
     def set_password(self, password):
-        """Hash and set password"""
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
-        """Check if password matches hash"""
         return check_password_hash(self.password_hash, password)
     
     def to_dict(self):
-        """Convert user to dictionary"""
         return {
             'id': str(self.id),
             'email': self.email,

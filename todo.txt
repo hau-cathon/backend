@@ -5,3 +5,18 @@ zgłoszenia
 użytkownicy
 role
 dubling
+zdjęcia OPTiONAL
+
+_________
+operatorzy - zintegruj userów i role
+Model zgłoszenia
+endpointy do tych modeli
+
+
+typ zdarzenia enum
+gatunek
+liczba zwierząt
+options
+pilność 
+media
+miejsce zdarzenia
