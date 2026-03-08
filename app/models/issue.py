@@ -1,4 +1,4 @@
-from mongoengine import BooleanField, DateTimeField, Document, IntField, ListField, ReferenceField, StringField
+from mongoengine import BooleanField, DateTimeField, Document, EmailField, IntField, ListField, ReferenceField, StringField
 from datetime import datetime, timedelta
 from datetime import timedelta
 from app.models.user import User
@@ -7,7 +7,7 @@ from app.models.user import User
 class Issue(Document):
     meta = {
         'collection': 'issues',
-        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user', 'title']
+        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user', 'title', 'ticket_number']
     }
 
     event_type = StringField(
@@ -24,8 +24,14 @@ class Issue(Document):
     media = ListField(StringField(max_length=500))
     incident_address = StringField(required=True, max_length=300)
     contact_phone = StringField(max_length=20)
+    reporter_email = StringField(max_length=200)
+    ticket_number = StringField(max_length=50)
 
     description = StringField(max_length=2000)
+    
+    # Email tracking
+    reporter_email = EmailField()
+    ticket_number = StringField(unique=True, sparse=True, max_length=50)
 
     status = StringField(
         required=True,
@@ -36,13 +42,13 @@ class Issue(Document):
     assigned_to = ReferenceField(User, null=True)
     duplicate_of = ReferenceField('self', null=True)  # Referencja do oryginalnego zgłoszenia jeśli jest duplikatem
     duplicates = ListField(ReferenceField('self'))  # Lista zduplikowanych zgłoszeń
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=lambda: datetime.now(UTC))
+    updated_at = DateTimeField(default=lambda: datetime.now(UTC))
     resolved_at = DateTimeField(null=True)
-    reminder_time = DateTimeField(default=lambda: datetime.utcnow() + timedelta(seconds=30))
+    reminder_time = DateTimeField(default=lambda: datetime.now(UTC) + timedelta(seconds=30))
 
     def build_title(self):
-        timestamp = self.created_at or datetime.utcnow()
+        timestamp = self.created_at or datetime.now(UTC)
         created_part = timestamp.strftime('%Y%m%d-%H%M%S')
         issue_id = str(self.id) if self.id else 'noid'
         short_id = issue_id[-6:]
@@ -63,6 +69,8 @@ class Issue(Document):
             'incident_address': self.incident_address,
             'contact_phone': self.contact_phone,
             'description': self.description,
+            'reporter_email': self.reporter_email,
+            'ticket_number': self.ticket_number,
             'status': self.status,
             'user_id': str(self.user.id) if self.user else None,
             'assigned_to_id': str(self.assigned_to.id) if self.assigned_to else None,
