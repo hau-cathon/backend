@@ -23,6 +23,66 @@ class AnimalFieldExtractor:
                 'koty', 'kotów', 'kotom', 'kotami', 'kotach',
                 # Bez polskich znaków
                 'kotow', 'kotami'
+            ],
+            'lis': [
+                'lis', 'lisa', 'lisem', 'lisowi',
+                'lisy', 'lisów', 'lisom', 'lisami', 'lisach',
+                'lisow'
+            ],
+            'iguana': [
+                'iguana', 'iguany', 'iguanę', 'iguane', 'iguaną', 'iguaną', 'iguanie',
+                'iguany', 'iguan', 'iguanom', 'iguanami', 'iguanach'
+            ],
+            'papuga': [
+                'papuga', 'papugi', 'papugę', 'papuge', 'papugą', 'papugą', 'papudze',
+                'papugi', 'papug', 'papugom', 'papugami', 'papugach'
+            ],
+            'łoś': [
+                'łoś', 'los', 'łosia', 'losia', 'łosiem', 'losiem', 'łosiowi', 'losiowi',
+                'łosie', 'losie', 'łosi', 'losi'
+            ],
+            'koń': [
+                'koń', 'kon', 'konia', 'koniem', 'koniowi',
+                'konie', 'koni', 'koniom', 'końmi', 'konmi', 'koniach'
+            ],
+            'owca': [
+                'owca', 'owcy', 'owcę', 'owce', 'owcą', 'owcą',
+                'owce', 'owiec', 'owcom', 'owcami', 'owcach'
+            ],
+            'krowa': [
+                'krowa', 'krowy', 'krowę', 'krowe', 'krową', 'krową',
+                'krowy', 'krów', 'krowom', 'krowami', 'krowach',
+                'krow'
+            ],
+            'świnia': [
+                'świnia', 'swinia', 'świni', 'swini', 'świnię', 'swinie', 'świnią', 'swinią',
+                'świnie', 'swinie', 'świń', 'swin', 'świniom', 'swiniom', 'świniami', 'swiniami', 'świniach', 'swiniach'
+            ],
+            'kangur': [
+                'kangur', 'kangura', 'kangurem', 'kangurze', 'kangury', 'kangurów', 'kangurów', 'kangurami', 'kangurach',
+                'kangurow'
+            ],
+            'koza': [
+                'koza', 'kozy', 'kozę', 'koze', 'kozą', 'kozą',
+                'kozy', 'kóz', 'koz', 'kozom', 'kozami', 'kozach'
+            ],
+            'królik': [
+                'królik', 'krolik', 'królika', 'krolika', 'królikiem', 'krolikiem',
+                'króliki', 'kroliki', 'królików', 'krolikow', 'królikami', 'krolikami', 'królikach', 'krolikach'
+            ],
+            'jeleń': [
+                'jeleń', 'jelen', 'jelenia', 'jeleniem', 'jeleniowi',
+                'jelenie', 'jeleni', 'jeleniom', 'jeleniami', 'jeleniach'
+            ],
+            'sarna': [
+                'sarna', 'sarny', 'sarnę', 'sarne', 'sarną', 'sarną',
+                'sarny', 'saren', 'sarnom', 'sarnami', 'sarnach'
+            ],
+            # With love, IT students <3
+            'robot': [
+                'robot', 'robotowi', 'robocika', 'robocik', 'robotem',
+                'robocikiem', 'Chatuś', 'Chatuśka', 'Chatuśku', 'Chatuśkiem',
+                'Chatuśkowi', 'Chatus', 'Chatusia', 'Chatusie', 'Chatusią', 'Chatusią'
             ]
         }
         
@@ -104,14 +164,23 @@ class AnimalFieldExtractor:
             'zero': 0,
             'jeden': 1, 'jedna': 1, 'jedno': 1, 'jednego': 1, 'jednej': 1, 'jednemu': 1, 'jednym': 1, 'jedną': 1,
             'dwa': 2, 'dwie': 2, 'dwóch': 2, 'dwoch': 2, 'dwóm': 2, 'dwom': 2, 'dwoma': 2,
+            'dwójka': 2, 'dwojka': 2,
             'trzy': 3, 'trzech': 3, 'trzem': 3,
+            'trójka': 3, 'trojka': 3,
             'cztery': 4, 'czterech': 4, 'czterem': 4,
+            'czwórka': 4, 'czworka': 4,
             'pięć': 5, 'piec': 5, 'pięciu': 5, 'pieciu': 5,
+            'piątka': 5, 'piatka': 5,
             'sześć': 6, 'szesc': 6, 'sześciu': 6, 'szesciu': 6,
+            'szóstka': 6, 'szostka': 6,
             'siedem': 7, 'siedmiu': 7,
+            'siódemka': 7, 'siodemka': 7,
             'osiem': 8, 'ośmiu': 8, 'osmiu': 8,
+            'ósemka': 8, 'osemka': 8,
             'dziewięć': 9, 'dziewiec': 9, 'dziewięciu': 9, 'dziewieciu': 9,
+            'dziewiątka': 9, 'dziewiatka': 9,
             'dziesięć': 10, 'dziesiec': 10, 'dziesięciu': 10, 'dziesieciu': 10,
+            'dziesiątka': 10, 'dziesiatka': 10,
         }
 
     def _replace_spoken_digits(self, text):
@@ -499,7 +568,7 @@ class AnimalFieldExtractor:
             'pies', 'kot', 'zwierze', 'ulica', 'park', 'telefon', 'numer',
             'adres', 'dzwoni', 'zgłasza', 'kontakt', 'sprawa', 'pomocy',
             'pan', 'pani', 'bardzo', 'proszę', 'dziękuję', 'uniwersytet',
-            'uniwersytetu', 'gnaskiego', 'gdańskiego', 'szkoła', 'szkoły',
+            'uniwersytetu', 'gnaskiego', 'gdanskiego', 'gdańskiego', 'szkoła', 'szkoły',
             'kościół', 'kościoła', 'sklep', 'sklepu'
         ]
         word_lower = word.lower()
@@ -726,7 +795,21 @@ class AnimalFieldExtractor:
         """Zwraca label dla gatunku"""
         labels = {
             'pies': 'Pies',
-            'kot': 'Kot'
+            'kot': 'Kot',
+            'lis': 'Lis',
+            'iguana': 'Iguana',
+            'papuga': 'Papuga',
+            'łoś': 'Łoś',
+            'koń': 'Koń',
+            'owca': 'Owca',
+            'krowa': 'Krowa',
+            'świnia': 'Świnia',
+            'kangur': 'Kangur',
+            'koza': 'Koza',
+            'królik': 'Królik',
+            'jeleń': 'Jeleń',
+            'sarna': 'Sarna',
+            'robot': 'Robot'
         }
         return labels.get(species, 'Nieokreślony')
     
@@ -756,6 +839,7 @@ class AnimalFieldExtractor:
             r'\b(\d{1,2})\s+(?:[a-ząćęłńóśźż\-]+\s+){0,2}(?:psy|pies|psów|psami|psach|koty|kot|kotów|kotami|kotach|zwierzęta|zwierzeta|zwierząt|zwierzat)\b',
             r'\b(?:grupa|stado|gromada)\s+(\d{1,2})\s+(?:psy|psów|koty|kotów|zwierząt|zwierzat)\b',
             r'\b(\d{1,2})\s+sztuk\b',
+            r'\b(\d{1,2})\s+sztuk(?:i)?\s+(?:zwierząt|zwierzat|psów|kotów)\b',
         ]
 
         for pattern in explicit_number_patterns:
