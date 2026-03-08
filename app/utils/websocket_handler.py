@@ -129,8 +129,8 @@ def handle_audio_chunk(data):
             else:
                 combined_confidence = animal_conf * 0.80 + priority_conf * 0.20
             
-            # Auto-fill only if confidence >= 85%, but never if < 50%
-            should_auto_fill = combined_confidence >= 0.85 and combined_confidence >= 0.50
+            # Auto-fill if confidence >= 75% (realistic for real calls), but never if < 50%
+            should_auto_fill = combined_confidence >= 0.75 and combined_confidence >= 0.50
             
             # Wyślij wynik
             emit('transcription_complete', {
@@ -147,13 +147,19 @@ def handle_audio_chunk(data):
                     'species': animal_fields_with_confidence['fields']['species']['value'],
                     'species_label': animal_extractor.get_species_label(animal_fields_with_confidence['fields']['species']['value']),
                     'species_confidence': animal_fields_with_confidence['fields']['species']['confidence'],
+                    'animal_count': animal_fields_with_confidence['fields']['animal_count']['value'],
+                    'animal_count_confidence': animal_fields_with_confidence['fields']['animal_count']['confidence'],
                     'location': animal_fields_with_confidence['fields']['location']['value'],
                     'location_confidence': animal_fields_with_confidence['fields']['location']['confidence'],
                     'incident_types': animal_fields_with_confidence['fields']['incident_types']['value'],
                     'incident_types_labels': [animal_extractor.get_incident_type_label(t) for t in animal_fields_with_confidence['fields']['incident_types']['value']],
                     'incident_types_confidence': animal_fields_with_confidence['fields']['incident_types']['confidence'],
                     'description': animal_fields_with_confidence['fields']['description']['value'],
-                    'description_confidence': animal_fields_with_confidence['fields']['description']['confidence']
+                    'description_confidence': animal_fields_with_confidence['fields']['description']['confidence'],
+                    'caller_name': animal_fields_with_confidence['fields']['caller_name']['value'],
+                    'caller_name_confidence': animal_fields_with_confidence['fields']['caller_name']['confidence'],
+                    'caller_phone': animal_fields_with_confidence['fields']['caller_phone']['value'],
+                    'caller_phone_confidence': animal_fields_with_confidence['fields']['caller_phone']['confidence']
                 },
                 'priority_prediction': {
                     'prediction': priority_prediction.get('prediction'),
@@ -260,13 +266,19 @@ def handle_stop_recording():
                 'species': animal_fields_with_confidence['fields']['species']['value'],
                 'species_label': animal_extractor.get_species_label(animal_fields_with_confidence['fields']['species']['value']),
                 'species_confidence': animal_fields_with_confidence['fields']['species']['confidence'],
+                'animal_count': animal_fields_with_confidence['fields']['animal_count']['value'],
+                'animal_count_confidence': animal_fields_with_confidence['fields']['animal_count']['confidence'],
                 'location': animal_fields_with_confidence['fields']['location']['value'],
                 'location_confidence': animal_fields_with_confidence['fields']['location']['confidence'],
                 'incident_types': animal_fields_with_confidence['fields']['incident_types']['value'],
                 'incident_types_labels': [animal_extractor.get_incident_type_label(t) for t in animal_fields_with_confidence['fields']['incident_types']['value']],
                 'incident_types_confidence': animal_fields_with_confidence['fields']['incident_types']['confidence'],
                 'description': animal_fields_with_confidence['fields']['description']['value'],
-                'description_confidence': animal_fields_with_confidence['fields']['description']['confidence']
+                'description_confidence': animal_fields_with_confidence['fields']['description']['confidence'],
+                'caller_name': animal_fields_with_confidence['fields']['caller_name']['value'],
+                'caller_name_confidence': animal_fields_with_confidence['fields']['caller_name']['confidence'],
+                'caller_phone': animal_fields_with_confidence['fields']['caller_phone']['value'],
+                'caller_phone_confidence': animal_fields_with_confidence['fields']['caller_phone']['confidence']
             },
             'priority_prediction': {
                 'prediction': priority_prediction.get('prediction'),
