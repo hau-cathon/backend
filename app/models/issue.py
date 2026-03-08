@@ -1,4 +1,4 @@
-from mongoengine import DateTimeField, Document, IntField, ListField, ReferenceField, StringField
+from mongoengine import BooleanField, DateTimeField, Document, IntField, ListField, ReferenceField, StringField
 from datetime import datetime
 from app.models.user import User
 
@@ -16,7 +16,7 @@ class Issue(Document):
     species = StringField(required=True, max_length=100)
     animal_count = IntField(required=True, min_value=1, default=1)
     options = ListField(StringField(max_length=100))
-    urgency = bool(
+    urgency = BooleanField(
         default=False
     )
     media = ListField(StringField(max_length=500))

@@ -1,16 +1,13 @@
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.issue import Issue
 from app.models.issue_duplicate import IssueDuplicate
-from app.models.user import User
 from app.services.issue_duplicate_service import IssueDuplicateService
 
 issue_duplicate_bp = Blueprint('issue_duplicates', __name__)
 
 
 @issue_duplicate_bp.route('/issues/<issue_id>/duplicates', methods=['POST'])
-@jwt_required()
 def mark_duplicate(issue_id):
     try:
         data = request.get_json()
@@ -43,16 +40,14 @@ def mark_duplicate(issue_id):
 
 
 @issue_duplicate_bp.route('/duplicates/<duplicate_id>/merge', methods=['POST'])
-@jwt_required()
 def merge_duplicate(duplicate_id):
     try:
-        current_user_id = get_jwt_identity()
         data = request.get_json() or {}
         fields_to_merge = data.get('fields', ['description', 'contact_phone', 'media'])
 
         duplicate_record = IssueDuplicateService.merge_duplicates(
             duplicate_id,
-            current_user_id,
+            None,
             fields_to_merge
         )
 
@@ -70,7 +65,6 @@ def merge_duplicate(duplicate_id):
 
 
 @issue_duplicate_bp.route('/duplicates/<duplicate_id>/reject', methods=['POST'])
-@jwt_required()
 def reject_duplicate(duplicate_id):
     try:
         data = request.get_json() or {}
@@ -92,7 +86,6 @@ def reject_duplicate(duplicate_id):
 
 
 @issue_duplicate_bp.route('/issues/<issue_id>/duplicates', methods=['GET'])
-@jwt_required()
 def get_issue_duplicates(issue_id):
     try:
         Issue.objects.get(id=issue_id)
@@ -111,7 +104,6 @@ def get_issue_duplicates(issue_id):
 
 
 @issue_duplicate_bp.route('/duplicates/pending', methods=['GET'])
-@jwt_required()
 def get_pending_duplicates():
     try:
         duplicates = IssueDuplicateService.get_pending_duplicates()
