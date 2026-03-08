@@ -42,13 +42,14 @@ class Issue(Document):
     assigned_to = ReferenceField(User, null=True)
     duplicate_of = ReferenceField('self', null=True)  # Referencja do oryginalnego zgłoszenia jeśli jest duplikatem
     duplicates = ListField(ReferenceField('self'))  # Lista zduplikowanych zgłoszeń
-    created_at = DateTimeField(default=lambda: datetime.now(UTC))
-    updated_at = DateTimeField(default=lambda: datetime.now(UTC))
+    duplicates_confirmed = ListField(ReferenceField('self'))  # Lista potwierdzonych duplikatów (scalone)
+    created_at = DateTimeField(default=lambda: datetime.utcnow())
+    updated_at = DateTimeField(default=lambda: datetime.utcnow())
     resolved_at = DateTimeField(null=True)
-    reminder_time = DateTimeField(default=lambda: datetime.now(UTC) + timedelta(seconds=30))
+    reminder_time = DateTimeField(default=lambda: datetime.utcnow() + timedelta(days=7))
 
     def build_title(self):
-        timestamp = self.created_at or datetime.now(UTC)
+        timestamp = self.created_at or datetime.utcnow()
         created_part = timestamp.strftime('%Y%m%d-%H%M%S')
         issue_id = str(self.id) if self.id else 'noid'
         short_id = issue_id[-6:]
@@ -76,6 +77,7 @@ class Issue(Document):
             'assigned_to_id': str(self.assigned_to.id) if self.assigned_to else None,
             'duplicate_of_id': str(self.duplicate_of.id) if self.duplicate_of else None,
             'duplicates_ids': [str(dup.id) for dup in self.duplicates] if self.duplicates else [],
+            'duplicates_confirmed_ids': [str(dup.id) for dup in self.duplicates_confirmed] if self.duplicates_confirmed else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,

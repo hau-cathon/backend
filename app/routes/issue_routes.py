@@ -1,5 +1,5 @@
 """Issue routes - basic CRUD operations"""
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from app.models.issue import Issue
 from app.models.user import User
 from app.services.action_history_service import ActionHistoryService
@@ -128,6 +128,17 @@ def create_issue():
             # Logging action history should not block issue creation.
             pass
         
+        # Check for duplicates asynchronously (don't block response)
+        try:
+            from app.utils.duplicateDetectorUltimate import check_new_issue_duplicate
+            current_app.logger.info(f"Checking duplicates...")
+            check_new_issue_duplicate(issue)
+            current_app.logger.info(f"Duplicate check completed for issue {issue.id}")
+        except Exception as e:
+            # Log error but don't fail the request
+            current_app.logger.error(f"Error checking duplicates for issue {issue.id}: {str(e)}")
+        
+        current_app.logger.info(f"Returning success response for issue {issue.id}")
         return jsonify({
             'status': 'success',
             'message': 'Issue created successfully',
@@ -135,11 +146,13 @@ def create_issue():
         }), 201
         
     except ValidationError as e:
+        current_app.logger.error(f"ValidationError: {str(e)}")
         return jsonify({
             'status': 'error',
             'error': f'Validation error: {str(e)}'
         }), 400
     except Exception as e:
+        current_app.logger.error(f"Exception in create_issue: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
             'error': str(e)
@@ -276,81 +289,152 @@ def delete_issue(issue_id):
         }), 500
 
 
-@issue_bp.route('/ticket/<ticket_id>/actions', methods=['GET'])
-def get_ticket_actions(ticket_id):
-    """Get timeline actions for a ticket reference."""
+@issue_bp.route('/<issue_id>/merge-duplicate', methods=['POST'])
+def merge_duplicate(issue_id):
+    """Merge a duplicate issue with the original"""
     try:
-        limit_param = request.args.get('limit', '200')
-        limit = int(limit_param)
-        if limit < 1:
-            limit = 1
-        if limit > 500:
-            limit = 500
-
-        actions = ActionHistoryService.list_actions(ticket_id, limit=limit)
+        data = request.get_json()
+        duplicate_issue_id = data.get('duplicate_issue_id')
+        
+        if not duplicate_issue_id:
+            return jsonify({
+                'status': 'error',
+                'error': 'duplicate_issue_id is required'
+            }), 400
+        
+        original = Issue.objects.get(id=issue_id)
+        duplicate = Issue.objects.get(id=duplicate_issue_id)
+        
+        # Merge contact phone if original doesn't have one
+        merged_phone = data.get('contact_phone')
+        if merged_phone:
+            original.contact_phone = merged_phone
+        elif duplicate.contact_phone and not original.contact_phone:
+            original.contact_phone = duplicate.contact_phone
+        
+        # Merge description if original doesn't have one
+        if duplicate.description and not original.description:
+            original.description = duplicate.description
+        
+        # Merge media
+        if duplicate.media:
+            if not original.media:
+                original.media = []
+            original.media.extend(duplicate.media)
+        
+        # Merge options
+        if duplicate.options:
+            if not original.options:
+                original.options = []
+            for opt in duplicate.options:
+                if opt not in original.options:
+                    original.options.append(opt)
+        
+        # Update animal count if duplicate has more
+        if duplicate.animal_count and duplicate.animal_count > original.animal_count:
+            original.animal_count = duplicate.animal_count
+        
+        original.updated_at = datetime.utcnow()
+        
+        # Add duplicate to original's duplicates_confirmed list
+        if not original.duplicates_confirmed:
+            original.duplicates_confirmed = []
+        if duplicate not in original.duplicates_confirmed:
+            original.duplicates_confirmed.append(duplicate)
+        
+        # Remove from duplicates list if present
+        if original.duplicates:
+            original.duplicates = [d for d in original.duplicates if str(d.id) != str(duplicate_issue_id)]
+        
+        original.save()
+        
+        # Mark duplicate as duplicate and set its duplicate_of reference
+        duplicate.status = 'duplicate'
+        duplicate.duplicate_of = original
+        duplicate.updated_at = datetime.utcnow()
+        
+        # Add original to duplicate's duplicates_confirmed list (bidirectional)
+        if not duplicate.duplicates_confirmed:
+            duplicate.duplicates_confirmed = []
+        if original not in duplicate.duplicates_confirmed:
+            duplicate.duplicates_confirmed.append(original)
+        
+        # Remove from duplicates list if present
+        if duplicate.duplicates:
+            duplicate.duplicates = [d for d in duplicate.duplicates if str(d.id) != str(issue_id)]
+        
+        duplicate.save()
+        
         return jsonify({
             'status': 'success',
-            'ticket_id': ticket_id,
-            'count': len(actions),
-            'actions': [action.to_dict() for action in actions],
+            'message': 'Issues merged successfully',
+            'merged_ids': [str(original.id), str(duplicate.id)],
+            'issue': original.to_dict()
         }), 200
-
-    except ValueError:
+        
+    except DoesNotExist as e:
         return jsonify({
             'status': 'error',
-            'error': 'Query param limit must be an integer',
-        }), 400
+            'error': 'Issue not found'
+        }), 404
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'error': str(e),
+            'error': str(e)
         }), 500
 
 
-@issue_bp.route('/ticket/<ticket_id>/actions', methods=['POST'])
-def create_ticket_action(ticket_id):
-    """Create a timeline action entry for a ticket reference."""
+@issue_bp.route('/<issue_id>/reject-duplicate', methods=['POST'])
+def reject_duplicate(issue_id):
+    """Reject a duplicate relationship"""
     try:
-        data = request.get_json() or {}
-
-        required_fields = ['action_type', 'label', 'detail']
-        for field in required_fields:
-            if not str(data.get(field, '')).strip():
-                return jsonify({
-                    'status': 'error',
-                    'error': f'Missing required field: {field}',
-                }), 400
-
-        action = ActionHistoryService.create_action(
-            ticket_id=ticket_id,
-            action_type=str(data['action_type']).strip(),
-            label=str(data['label']).strip(),
-            detail=str(data['detail']).strip(),
-            timeline_type=str(data.get('timeline_type', 'info')).strip(),
-            source=str(data.get('source', 'frontend')).strip(),
-            actor_id=str(data.get('actor_id')).strip() if data.get('actor_id') is not None else None,
-            metadata=data.get('metadata') if isinstance(data.get('metadata'), dict) else {},
-        )
-
+        data = request.get_json()
+        duplicate_issue_id = data.get('duplicate_issue_id')
+        
+        if not duplicate_issue_id:
+            return jsonify({
+                'status': 'error',
+                'error': 'duplicate_issue_id is required'
+            }), 400
+        
+        original = Issue.objects.get(id=issue_id)
+        duplicate = Issue.objects.get(id=duplicate_issue_id)
+        
+        # Remove the duplicate from original's duplicates list
+        if original.duplicates:
+            original.duplicates = [d for d in original.duplicates if str(d.id) != str(duplicate_issue_id)]
+            original.save()
+        
+        # Clear the duplicate_of reference from the duplicate issue
+        if duplicate.duplicate_of and str(duplicate.duplicate_of.id) == str(issue_id):
+            duplicate.duplicate_of = None
+            # Only set to duplicate status if it was being treated as one
+            if duplicate.status == 'duplicate':
+                duplicate.status = 'open'
+            duplicate.updated_at = datetime.utcnow()
+            duplicate.save()
+        
+        # Also remove original from duplicate's duplicates list if it exists there (bidirectional cleanup)
+        if duplicate.duplicates:
+            duplicate.duplicates = [d for d in duplicate.duplicates if str(d.id) != str(issue_id)]
+            duplicate.save()
+        
         return jsonify({
             'status': 'success',
-            'message': 'Action history entry created',
-            'action': action.to_dict(),
-        }), 201
-    except ValueError as e:
+            'message': 'Duplicate relationship rejected',
+            'rejected_ids': [str(original.id), str(duplicate.id)],
+            'issue': original.to_dict()
+        }), 200
+        
+    except DoesNotExist:
         return jsonify({
             'status': 'error',
-            'error': str(e),
-        }), 400
-    except ValidationError as e:
-        return jsonify({
-            'status': 'error',
-            'error': f'Validation error: {str(e)}',
-        }), 400
+            'error': 'Issue not found'
+        }), 404
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'error': str(e),
+            'error': str(e)
         }), 500
 
 
