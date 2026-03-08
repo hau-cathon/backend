@@ -1,4 +1,4 @@
-from mongoengine import BooleanField, DateTimeField, Document, IntField, ListField, ReferenceField, StringField
+from mongoengine import BooleanField, DateTimeField, Document, EmailField, IntField, ListField, ReferenceField, StringField
 from datetime import datetime, timedelta
 from datetime import timedelta
 from app.models.user import User
@@ -7,13 +7,14 @@ from app.models.user import User
 class Issue(Document):
     meta = {
         'collection': 'issues',
-        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user']
+        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user', 'title', 'ticket_number']
     }
 
     event_type = StringField(
         required=True,
         choices=['bezdomne_zwierze', 'zdarzenie_drogowe', 'znecanie_sie', 'inne']
     )
+    title = StringField(max_length=250)
     species = StringField(required=True, max_length=100)
     animal_count = IntField(required=True, min_value=1, default=1)
     options = ListField(StringField(max_length=100))
@@ -25,6 +26,10 @@ class Issue(Document):
     contact_phone = StringField(max_length=20)
 
     description = StringField(max_length=2000)
+    
+    # Email tracking
+    reporter_email = EmailField()
+    ticket_number = StringField(unique=True, sparse=True, max_length=50)
 
     status = StringField(
         required=True,
@@ -40,9 +45,19 @@ class Issue(Document):
     resolved_at = DateTimeField(null=True)
     reminder_time = DateTimeField(default=lambda: datetime.utcnow() + timedelta(seconds=30))
 
+    def build_title(self):
+        timestamp = self.created_at or datetime.utcnow()
+        created_part = timestamp.strftime('%Y%m%d-%H%M%S')
+        issue_id = str(self.id) if self.id else 'noid'
+        short_id = issue_id[-6:]
+        species_part = (self.species or 'unknown').strip().replace(' ', '_')
+        return f"{short_id}-{species_part}-{created_part}"
+
     def to_dict(self):
+        computed_title = self.title or self.build_title()
         return {
             'id': str(self.id),
+            'title': computed_title,
             'event_type': self.event_type,
             'species': self.species,
             'animal_count': self.animal_count,
@@ -52,6 +67,8 @@ class Issue(Document):
             'incident_address': self.incident_address,
             'contact_phone': self.contact_phone,
             'description': self.description,
+            'reporter_email': self.reporter_email,
+            'ticket_number': self.ticket_number,
             'status': self.status,
             'user_id': str(self.user.id) if self.user else None,
             'assigned_to_id': str(self.assigned_to.id) if self.assigned_to else None,
