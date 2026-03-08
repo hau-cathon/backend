@@ -181,11 +181,26 @@ class SpeechToText:
             }
         
         try:
-            # Połącz fragmenty
-            if format == 'wav':
+            # For WebM/OGG streaming chunks, concatenate raw bytes first, then decode
+            # Individual chunks don't have complete headers and can't be decoded separately
+            if format in ['webm', 'ogg', 'opus']:
+                # Combine all raw bytes
+                combined_audio_bytes = b''.join(audio_chunks)
+                
+                if PYDUB_AVAILABLE:
+                    # Decode the complete file
+                    audio_segment = AudioSegment.from_file(io.BytesIO(combined_audio_bytes), format=format)
+                    wav_io = io.BytesIO()
+                    audio_segment.export(wav_io, format='wav')
+                    combined_audio = wav_io.getvalue()
+                else:
+                    # Without pydub, pass the raw bytes and let transcribe_audio_data handle it
+                    return self.transcribe_audio_data(combined_audio_bytes, format=format, language=language)
+            elif format == 'wav':
+                # WAV chunks can be concatenated directly
                 combined_audio = b''.join(audio_chunks)
             elif PYDUB_AVAILABLE:
-                # Użyj pydub do połączenia
+                # For other formats, try decoding each chunk (if they have complete headers)
                 segments = [AudioSegment.from_file(io.BytesIO(chunk), format=format) 
                            for chunk in audio_chunks]
                 combined = sum(segments)
@@ -194,7 +209,7 @@ class SpeechToText:
                 combined.export(wav_io, format='wav')
                 combined_audio = wav_io.getvalue()
             else:
-                # Fallback bez pydub
+                # Fallback: concatenate raw bytes
                 combined_audio = b''.join(audio_chunks)
             
             return self.transcribe_audio_data(combined_audio, format='wav', language=language)
