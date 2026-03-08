@@ -38,3 +38,9 @@ def check_new_issue_duplicate(new_issue):
 
     new_issue.duplicates = duplicates
     new_issue.save()
+
+    # Update each duplicate issue to include the new issue
+    for duplicate_issue in duplicates:
+        if new_issue not in duplicate_issue.duplicates:
+            duplicate_issue.duplicates.append(new_issue)
+            duplicate_issue.save()
