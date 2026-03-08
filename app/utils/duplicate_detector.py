@@ -20,6 +20,19 @@ class DuplicateDetector:
             max_features=1000,
             stop_words=None  # Możesz dodać polskie stop words
         )
+
+    @staticmethod
+    def _build_issue_text(issue):
+        """Build a comparable text representation from Issue fields that exist in the model."""
+        parts = [
+            issue.event_type or '',
+            issue.species or '',
+            issue.incident_address or '',
+            issue.description or '',
+            ' '.join(issue.options) if issue.options else '',
+            'pilne' if issue.urgency else ''
+        ]
+        return ' '.join(part for part in parts if part).strip()
     
     def find_duplicates(self, issue, days_back=7):
         """
@@ -41,14 +54,24 @@ class DuplicateDetector:
             recent_issues = Issue.objects(
                 created_at__gte=date_threshold,
                 id__ne=issue.id  # Wyklucz aktualne zgłoszenie
-            ).only('id', 'title', 'description', 'status', 'priority', 'created_at')
+            ).only(
+                'id',
+                'event_type',
+                'species',
+                'incident_address',
+                'description',
+                'options',
+                'urgency',
+                'status',
+                'created_at'
+            )
             
             if not recent_issues:
                 return []
             
             # Przygotuj teksty do porównania
-            current_text = f"{issue.title} {issue.description}"
-            other_texts = [f"{i.title} {i.description}" for i in recent_issues]
+            current_text = self._build_issue_text(issue)
+            other_texts = [self._build_issue_text(i) for i in recent_issues]
             
             # Jeśli jest tylko jedno zgłoszenie do porównania
             if len(other_texts) == 0:
@@ -70,10 +93,12 @@ class DuplicateDetector:
                     similar_issue = recent_issues[idx]
                     duplicates.append({
                         'id': str(similar_issue.id),
-                        'title': similar_issue.title,
-                        'description': similar_issue.description[:200],  # Pierwsze 200 znaków
+                        'event_type': similar_issue.event_type,
+                        'species': similar_issue.species,
+                        'incident_address': similar_issue.incident_address,
+                        'description': (similar_issue.description or '')[:200],  # Pierwsze 200 znaków
                         'status': similar_issue.status,
-                        'priority': similar_issue.priority,
+                        'urgency': bool(similar_issue.urgency),
                         'created_at': similar_issue.created_at.isoformat(),
                         'similarity': float(similarity),
                         'similarity_percent': float(similarity * 100)

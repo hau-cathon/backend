@@ -8,7 +8,19 @@ from bson import ObjectId
 duplicate_bp = Blueprint('duplicates', __name__)
 
 
-@duplicate_bp.route('/check/<issue_identifier>', methods=['GET'])
+def _issue_compare_text(issue):
+    parts = [
+        issue.event_type or '',
+        issue.species or '',
+        issue.incident_address or '',
+        issue.description or '',
+        ' '.join(issue.options) if issue.options else '',
+        'pilne' if issue.urgency else ''
+    ]
+    return ' '.join(part for part in parts if part).strip()
+
+
+@duplicate_bp.route('/check/<issue_id>', methods=['GET'])
 # @jwt_required()
 def check_duplicates(issue_identifier):
     """
@@ -128,8 +140,8 @@ def compare_issues():
         
         # Oblicz podobieństwo
         detector = DuplicateDetector()
-        text1 = f"{issue1.title} {issue1.description}"
-        text2 = f"{issue2.title} {issue2.description}"
+        text1 = _issue_compare_text(issue1)
+        text2 = _issue_compare_text(issue2)
         
         similarity = detector.get_similarity_score(text1, text2)
         
@@ -137,11 +149,13 @@ def compare_issues():
             'status': 'success',
             'issue_1': {
                 'id': str(issue1.id),
-                'title': issue1.title
+                'event_type': issue1.event_type,
+                'species': issue1.species
             },
             'issue_2': {
                 'id': str(issue2.id),
-                'title': issue2.title
+                'event_type': issue2.event_type,
+                'species': issue2.species
             },
             'similarity': float(similarity),
             'similarity_percent': float(similarity * 100),
