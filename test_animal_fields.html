@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Zgłoszenia zwierzęce</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-box {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+            border-radius: 5px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+            background: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            display: none;
+        }
+        .field {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .field-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .field-value {
+            color: #333;
+            font-size: 16px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 3px;
+            border-radius: 15px;
+            font-size: 12px;
+            background: #2196F3;
+            color: white;
+        }
+        .badge.species {
+            background: #FF9800;
+        }
+        .badge.incident {
+            background: #f44336;
+        }
+        .form-preview {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border: 2px solid #ffc107;
+        }
+        .example {
+            background: #e3f2fd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .example:hover {
+            background: #bbdefb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐕 Test - Ekstrakcja pól zgłoszeń zwierzęcych</h1>
+        
+        <div class="test-box">
+            <h3>Wpisz opis zgłoszenia:</h3>
+            <textarea id="textInput" placeholder="Np. Widzę zbłąkanego psa przy ulicy Głównej 15. Wygląda na wychudzonego i kuleje."></textarea>
+            <button onclick="analyzeText()">🔍 Analizuj tekst</button>
+        </div>
+
+        <div class="test-box">
+            <h3>Lub wybierz przykład:</h3>
+            <div class="example" onclick="useExample(this)">
+                Widzę zbłąkanego psa przy ulicy Głównej 15. Wygląda na wychudzonego i kuleje.
+            </div>
+            <div class="example" onclick="useExample(this)">
+                Ranny kot w parku Centralnym. Krwawi z łapy i nie może chodzić.
+            </div>
+            <div class="example" onclick="useExample(this)">
+                Agresywny pies atakuje ludzi na placu Wolności. Szczeka i gryzie.
+            </div>
+            <div class="example" onclick="useExample(this)">
+                Martwy kot na ulicy Kwiatowej obok sklepu Biedronka.
+            </div>
+            <div class="example" onclick="useExample(this)">
+                Pies zamknięty w samochodzie na parkingu przy centrum handlowym. Jest bardzo gorąco.
+            </div>
+        </div>
+
+        <div id="result" class="result">
+            <h3>📋 Wynik analizy:</h3>
+            
+            <div class="field">
+                <div class="field-label">Gatunek zwierzęcia:</div>
+                <div class="field-value">
+                    <span id="species" class="badge species">-</span>
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Lokalizacja:</div>
+                <div class="field-value" id="location">-</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Typy zdarzenia:</div>
+                <div class="field-value" id="incidentTypes">-</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Opis bez lokalizacji:</div>
+                <div class="field-value" id="description">-</div>
+            </div>
+
+            <div class="form-preview">
+                <h4>🎯 Automatycznie wypełniony formularz:</h4>
+                <pre id="formData" style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+
+        function useExample(element) {
+            document.getElementById('textInput').value = element.textContent.trim();
+            analyzeText();
+        }
+
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text) {
+                alert('Wprowadź tekst do analizy');
+                return;
+            }
+
+            try {
+                // Wywołaj endpoint analizy tekstowej
+                const response = await fetch(`${API_URL}/api/stt/text-analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayResults(data);
+                    
+                    // Wygeneruj formularz
+                    const formResponse = await fetch(`${API_URL}/api/form/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ text })
+                    });
+                    
+                    const formData = await formResponse.json();
+                    displayForm(formData);
+                } else {
+                    alert('Błąd: ' + data.error);
+                }
+            } catch (error) {
+                alert('Błąd połączenia: ' + error.message + '\nCzy serwer działa na http://localhost:5000?');
+            }
+        }
+
+        function displayResults(data) {
+            const { animal_fields } = data;
+            
+            // Gatunek
+            const speciesEl = document.getElementById('species');
+            if (animal_fields.species) {
+                speciesEl.textContent = animal_fields.species_label;
+                speciesEl.className = 'badge species';
+            } else {
+                speciesEl.textContent = 'Nie wykryto';
+                speciesEl.className = 'badge';
+            }
+
+            // Lokalizacja
+            const locationEl = document.getElementById('location');
+            locationEl.textContent = animal_fields.location || 'Nie wykryto lokalizacji';
+
+            // Typy zdarzeń
+            const incidentTypesEl = document.getElementById('incidentTypes');
+            if (animal_fields.incident_types && animal_fields.incident_types.length > 0) {
+                incidentTypesEl.innerHTML = animal_fields.incident_types_labels
+                    .map(label => `<span class="badge incident">${label}</span>`)
+                    .join(' ');
+            } else {
+                incidentTypesEl.textContent = 'Nie wykryto typu zdarzenia';
+            }
+
+            // Opis
+            document.getElementById('description').textContent = animal_fields.description;
+
+            // Pokaż wyniki
+            document.getElementById('result').style.display = 'block';
+        }
+
+        function displayForm(data) {
+            if (data.status === 'success') {
+                const formData = {
+                    fields: data.form.fields.map(f => ({
+                        name: f.name,
+                        label: f.label,
+                        type: f.type,
+                        required: f.required,
+                        value: f.value
+                    })),
+                    auto_filled: data.form.auto_filled
+                };
+
+                document.getElementById('formData').textContent = JSON.stringify(formData, null, 2);
+            }
+        }
+    </script>
+</body>
+</html>

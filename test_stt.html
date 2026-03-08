@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STT Demo - Test nagrywania</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        #recordBtn {
+            background: #4CAF50;
+            color: white;
+        }
+        #recordBtn:hover {
+            background: #45a049;
+        }
+        #recordBtn.recording {
+            background: #f44336;
+        }
+        #stopBtn {
+            background: #ff9800;
+            color: white;
+        }
+        #stopBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #uploadBtn {
+            background: #2196F3;
+            color: white;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            display: block;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+            display: block;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+            display: none;
+        }
+        .transcription {
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        .keyword {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .keyword.priority_high {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .keyword.priority_medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        .priority {
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .priority.high {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .priority.medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        .priority.low {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        #fileInput {
+            margin: 10px 0;
+        }
+        .highlighted {
+            background: yellow;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Speech-to-Text Demo</h1>
+        
+        <div>
+            <h3>Opcja 1: Nagraj audio</h3>
+            <button id="recordBtn" onclick="startRecording()">🔴 Rozpocznij nagrywanie</button>
+            <button id="stopBtn" onclick="stopRecording()" disabled>⏹️ Zatrzymaj</button>
+        </div>
+
+        <hr style="margin: 30px 0;">
+
+        <div>
+            <h3>Opcja 2: Upload pliku audio</h3>
+            <input type="file" id="fileInput" accept="audio/*">
+            <button id="uploadBtn" onclick="uploadFile()">📤 Wyślij plik</button>
+        </div>
+
+        <div id="status" class="status"></div>
+        
+        <div id="result">
+            <h3>Wynik transkrypcji:</h3>
+            <div class="transcription" id="transcription"></div>
+            
+            <h4>Priorytet:</h4>
+            <div class="priority" id="priority"></div>
+            
+            <h4>Słowa kluczowe:</h4>
+            <div class="keywords" id="keywords"></div>
+            
+            <h4>Szczegóły:</h4>
+            <pre id="details" style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let mediaRecorder;
+        let audioChunks = [];
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    showStatus('Przetwarzanie audio...', 'info');
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    await sendAudio(audioBlob);
+                };
+
+                mediaRecorder.start();
+                
+                document.getElementById('recordBtn').textContent = '🔴 Nagrywanie...';
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                
+                showStatus('Nagrywanie...', 'info');
+            } catch (error) {
+                showStatus('Błąd dostępu do mikrofonu: ' + error.message, 'error');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                document.getElementById('recordBtn').textContent = '🔴 Rozpocznij nagrywanie';
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('Wybierz plik audio', 'error');
+                return;
+            }
+            
+            showStatus('Wysyłanie pliku...', 'info');
+            await sendAudio(file);
+        }
+
+        async function sendAudio(audioBlob) {
+            try {
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
+                formData.append('language', 'pl');
+                formData.append('analyze', 'true');
+
+                const response = await fetch(`${API_URL}/api/stt/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showStatus('Transkrypcja zakończona!', 'success');
+                    displayResult(result);
+                } else {
+                    showStatus('Błąd: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Błąd połączenia: ' + error.message, 'error');
+            }
+        }
+
+        function displayResult(result) {
+            document.getElementById('result').style.display = 'block';
+            
+            // Transkrypcja z podświetleniami
+            const transcription = document.getElementById('transcription');
+            if (result.analysis && result.analysis.highlighted_text) {
+                transcription.innerHTML = result.analysis.highlighted_text
+                    .map(segment => {
+                        if (segment.highlighted) {
+                            return `<span class="highlighted" style="background: ${getHighlightColor(segment.category)}">${segment.text}</span>`;
+                        }
+                        return segment.text;
+                    })
+                    .join('');
+            } else {
+                transcription.textContent = result.transcription;
+            }
+            
+            // Priorytet
+            if (result.analysis && result.analysis.priority_suggestion) {
+                const priority = result.analysis.priority_suggestion;
+                const priorityDiv = document.getElementById('priority');
+                const priorityMap = { 0: 'low', 1: 'medium', 2: 'high' };
+                const priorityText = { 0: 'Niski', 1: 'Średni', 2: 'Wysoki' };
+                
+                priorityDiv.className = `priority ${priorityMap[priority.priority]}`;
+                priorityDiv.textContent = `${priorityText[priority.priority]} (pewność: ${(priority.confidence * 100).toFixed(0)}%) - ${priority.reason}`;
+            }
+            
+            // Słowa kluczowe
+            if (result.analysis && result.analysis.keywords) {
+                const keywordsDiv = document.getElementById('keywords');
+                keywordsDiv.innerHTML = result.analysis.keywords
+                    .map(kw => `<span class="keyword ${kw.category}">${kw.word} (${kw.count})</span>`)
+                    .join('');
+            }
+            
+            // Pełne szczegóły
+            document.getElementById('details').textContent = JSON.stringify(result, null, 2);
+        }
+
+        function getHighlightColor(category) {
+            const colors = {
+                'priority_high': '#ffcccc',
+                'priority_medium': '#ffe6cc',
+                'priority_low': '#ccffcc',
+                'technical': '#cce6ff',
+                'user_action': '#ffccff'
+            };
+            return colors[category] || '#ffff99';
+        }
+    </script>
+</body>
+</html>
