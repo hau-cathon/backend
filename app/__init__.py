@@ -6,30 +6,29 @@ from .extensions import init_db, jwt, cors
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
-    # Initialize extensions
+
     init_db(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
-    
-    # Register blueprints
+
     from .routes.auth_routes import auth_bp
     from .routes.user_routes import user_bp
+    from .routes.issue_duplicate_routes import issue_duplicate_bp
     
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
-    
-    # Register error handlers
+    app.register_blueprint(issue_duplicate_bp, url_prefix="/api")
+
     register_error_handlers(app)
-    
-    # Register shell context for flask shell command
+
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import User, Role, Issue, EmailCaseType, EmailTemplate, TemplateOption
+        from app.models import User, Role, Issue, IssueDuplicate, EmailCaseType, EmailTemplate, TemplateOption
         return {
             'User': User,
             'Role': Role,
             'Issue': Issue,
+            'IssueDuplicate': IssueDuplicate,
             'EmailCaseType': EmailCaseType,
             'EmailTemplate': EmailTemplate,
             'TemplateOption': TemplateOption

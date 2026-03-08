@@ -13,7 +13,7 @@ class User(Document):
     email = EmailField(required=True, unique=True)
     username = StringField(required=True, unique=True, max_length=80)
     password_hash = StringField(required=True)
-    role = ReferenceField(Role required=True)
+    role = ReferenceField(Role, required=True)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
