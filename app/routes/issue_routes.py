@@ -104,6 +104,8 @@ def create_issue():
             )
         
         issue.save()
+        issue.title = issue.build_title()
+        issue.save()
         
         return jsonify({
             'status': 'success',
@@ -135,6 +137,7 @@ def update_issue(issue_id):
             issue.event_type = data['event_type']
         if 'species' in data:
             issue.species = data['species']
+            issue.title = issue.build_title()
         if 'animal_count' in data:
             issue.animal_count = data['animal_count']
         if 'options' in data:
