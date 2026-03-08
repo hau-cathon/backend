@@ -34,19 +34,23 @@ if os.getenv('AUTO_CREATE_TEST_ISSUE', '0') == '1':
 
 def reminder_notifier():
     while True:
-        now = datetime.now(UTC)
-        issues = Issue.objects(reminder_time__lte=now)
-        for issue in issues:
-            #print(f"Reminder notification for Issue ID: {issue.id}")
-            socketio.emit('reminder', {
-                'issue_id': str(issue.id),
-                'message': f'Reminder for issue {issue.event_type} ({issue.species})',
-                'reminder_time': issue.reminder_time.isoformat()
-            })
-            # Optionally, update reminder_time or mark as notified
-            # issue.reminder_time = None
-            # issue.save()
-        time.sleep(60)  # Check every minute
+        try:
+            now = datetime.now(UTC)
+            issues = Issue.objects(reminder_time__lte=now)
+            for issue in issues:
+                print(f"[Reminder] Issue {issue.id} deadline reached! Broadcasting to all clients...")
+                socketio.emit('reminder', {
+                    'issue_id': str(issue.id),
+                    'message': f'Reminder for issue {issue.event_type} ({issue.species})',
+                    'reminder_time': issue.reminder_time.isoformat()
+                }, broadcast=True, skip_sid=None)
+                print(f"[Reminder] Broadcasted event for issue {issue.id}")
+                # Optionally, update reminder_time or mark as notified
+                # issue.reminder_time = None
+                # issue.save()
+        except Exception as e:
+            print(f"[Reminder Error] {str(e)}")
+        time.sleep(10)  # Check every 10 seconds for faster testing
 
 # Start reminder thread
 threading.Thread(target=reminder_notifier, daemon=True).start()
@@ -76,6 +80,5 @@ if __name__ == "__main__":
         print("=" * 60 + "\n")
         sys.exit(1)
     
-    # Start Flask server
-    app.run(debug=True)
+    # Start Flask server with Socket.IO support
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
