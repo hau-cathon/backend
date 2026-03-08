@@ -15,9 +15,15 @@ def create_app(config_class=Config):
     # Register blueprints
     from .routes.auth_routes import auth_bp
     from .routes.user_routes import user_bp
-    
+    from .routes.model_routes import model_bp
+    from .routes.email_routes import email_bp
+    from .routes.duplicate_routes import duplicate_bp
+
+    app.register_blueprint(duplicate_bp, url_prefix='/api/duplicates')
+    app.register_blueprint(email_bp, url_prefix='/api/email')
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
+    app.register_blueprint(model_bp, url_prefix="/api/model")
     
     # Register error handlers
     register_error_handlers(app)
