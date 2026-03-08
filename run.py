@@ -3,6 +3,7 @@ from mongoengine import get_connection
 import sys
 import threading
 import time
+import os
 from app.models.issue import Issue
 from app.utils.websocket_handler import socketio
 from datetime import datetime, timedelta, UTC
@@ -28,7 +29,8 @@ def create_test_issue():
         test_issue.save()
         print('Created test Issue:', test_issue.to_dict())
 
-create_test_issue()
+if os.getenv('AUTO_CREATE_TEST_ISSUE', '0') == '1':
+    create_test_issue()
 
 def reminder_notifier():
     while True:
