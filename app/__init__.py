@@ -10,7 +10,7 @@ def create_app(config_class=Config):
 
     init_db(app)
     jwt.init_app(app)
-    cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
+    cors.init_app(app, resources={r"/*": {"origins": "*"}})
     
     # Initialize WebSocket
     from .utils.websocket_handler import socketio
