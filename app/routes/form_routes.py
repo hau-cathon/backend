@@ -36,6 +36,7 @@ def generate_form():
             location = data.get('location')
             incident_types = data.get('incident_types', [])
             description = data.get('description', text)
+            animal_count = data.get('animal_count', 1)
         else:
             # Automatyczna ekstrakcja
             animal_fields = animal_extractor.extract_all_fields(text)
@@ -43,6 +44,7 @@ def generate_form():
             location = animal_fields['location']
             incident_types = animal_fields['incident_types']
             description = animal_fields['description']
+            animal_count = animal_fields.get('animal_count', 1)
         
         # POLA FORMULARZA DLA ZGŁOSZEŃ ZWIERZĘCYCH
         form_fields = [
@@ -57,6 +59,16 @@ def generate_form():
                     {'value': 'kot', 'label': 'Kot'}
                 ],
                 'placeholder': 'Wybierz gatunek'
+            },
+            {
+                'name': 'animal_count',
+                'label': 'Liczba zwierząt',
+                'type': 'number',
+                'required': True,
+                'value': animal_count,
+                'placeholder': 'np. 1, 2, 3',
+                'min': 1,
+                'max': 50
             },
             {
                 'name': 'location',
@@ -115,12 +127,14 @@ def generate_form():
                 'fields': form_fields,
                 'suggested_values': {
                     'species': species,
+                    'animal_count': animal_count,
                     'location': location,
                     'description': description,
                     'incident_types': incident_types
                 },
                 'auto_filled': {
                     'species': species is not None,
+                    'animal_count': animal_count is not None,
                     'location': location is not None,
                     'description': True,
                     'incident_types': len(incident_types) > 0
@@ -152,6 +166,15 @@ def get_form_template():
                     {'value': 'kot', 'label': 'Kot'}
                 ],
                 'placeholder': 'Wybierz gatunek'
+            },
+            {
+                'name': 'animal_count',
+                'label': 'Liczba zwierząt',
+                'type': 'number',
+                'required': True,
+                'placeholder': 'np. 1, 2, 3',
+                'min': 1,
+                'max': 50
             },
             {
                 'name': 'location',

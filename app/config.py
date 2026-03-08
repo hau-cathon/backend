@@ -63,6 +63,17 @@ class Config:
     # CORS
     CORS_ORIGINS = _parse_cors_origins(os.getenv("CORS_ORIGINS", "local"))
     
+    # Email Configuration
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "True") == "True"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    
+    # IMAP Configuration (for reading emails)
+    IMAP_SERVER = os.getenv("IMAP_SERVER", "imap.gmail.com")
+    IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
+    
     # Pagination
     ITEMS_PER_PAGE = 20
 

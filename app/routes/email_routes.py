@@ -163,7 +163,7 @@ def send_ticket_email(ticket_id):
 
 @email_bp.route('/check', methods=['GET'], endpoint='check_mailbox')
 def check_emails():
-    """Sprawdza i odczytuje nowe emaile"""
+    """Sprawdza i odczytuje nowe emaile, automatycznie przypisując do zgłoszeń"""
     try:
         emails = read_unread_emails()
 

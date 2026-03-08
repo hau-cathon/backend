@@ -10,27 +10,56 @@ class KeywordExtractor:
         # Słowa kluczowe kategorii
         self.keywords = {
             'priority_high': [
+                # IT/helpdesk
                 'pilne', 'krytyczne', 'awaria', 'nie działa', 'błąd krytyczny',
                 'przestał działać', 'totalna awaria', 'produkcja', 'klient', 
-                'straty', 'blokuje', 'natychmiast'
+                'straty', 'blokuje', 'natychmiast',
+                # Zwierzęta - critical
+                'potrącony', 'potrącona', 'potrącone', 'krwawi', 'krwawiący',
+                'śmiertelnie', 'nie oddycha', 'martwy', 'martwa', 'nie żyje',
+                'padł', 'padła', 'zwłoki', 'atak', 'atakuje', 'gryzie',
+                'zagrożenie', 'niebezpieczny', 'krytyczny stan', 'wypadek',
+                'tragedia', 'ciężko ranny', 'uraz', 'wielki ból', 'nieprzytomny',
+                'nieprzytomna', 'nieprzytomne', 'zagrożenie życia', 'nie może oddychać',
+                'nie może się ruszyć', 'krew', 'pilna pomoc', 'natychmiastowa pomoc',
+                'nie może wstać', 'nie może chodzić', 'nie może się poruszać', 'ciężko dyszy',
+                'ostry ból', 'wyje', 'jęczy', 'zagłodzone', 'wychudzone', 'nie może jeść', 'nie może pić'
             ],
             'priority_medium': [
+                # IT/helpdesk
                 'problem', 'nie mogę', 'błąd', 'wolno', 'opóźnienie',
-                'czasami', 'sporadycznie', 'należy naprawić'
+                'czasami', 'sporadycznie', 'należy naprawić',
+                # Zwierzęta - medium
+                'ranny', 'ranna', 'ranne', 'kuleje', 'kontuzja', 'rana',
+                'agresywny', 'agresywna', 'szczeka', 'chory', 'chora',
+                'zamknięty', 'zamknięta', 'uwięziony', 'uwięzione', 
+                'w pułapce', 'trzymany', 'nie może wyjść', 'nie może uciec',
+                'nie może się schować', 'nie może się ukryć', 'nie może się schronić',
+                'nie może się zabezpieczyć', 'nie może się obronić', 'krótki łańcuch',
+                'krótka smycz', 'nie może się poruszać swobodnie', 'nie może się poruszać normalnie',
+                'złamanie', 'skręcenie', 'zwichnięcie', 'nie może się oprzeć', 'nie może się podnieść',
+                'nie może się położyć', 'nie może się usiąść'
             ],
             'priority_low': [
+                # IT/helpdesk
                 'prośba', 'propozycja', 'pytanie', 'sugestia', 
-                'gdy będzie czas', 'nie pilne', 'ulepszenie'
+                'gdy będzie czas', 'nie pilne', 'ulepszenie',
+                # Zwierzęta - low
+                'zbłąkany', 'zblakany', 'zagubiony', 'zgubił się', 'bez właściciela',
+                'głodny', 'głodna', 'wychudzone', 'bez jedzenia', 'samotny'
+                # typos
+                'zbłonkany', 'zbłakany', 'zbłakany', 'zbłakany', 'zgubiony', 'zgubiona', 'zgubione'
+                'zbłonkana', 'zbłonkane', 'zagubiony', 'zagubiona', 'zagubione', 'na smyczy', 'na łańcuchu',
             ],
-            'technical': [
-                'serwer', 'baza danych', 'aplikacja', 'system', 'api',
-                'backend', 'frontend', 'kod', 'deployment', 'hosting',
-                'drukarka', 'komputer', 'laptop', 'sieć', 'wifi', 'internet'
-            ],
-            'user_action': [
-                'zainstalować', 'naprawić', 'zaktualizować', 'sprawdzić',
-                'zresetować', 'skonfigurować', 'dodać', 'usunąć', 'zmienić'
-            ]
+            # 'technical': [
+            #     'serwer', 'baza danych', 'aplikacja', 'system', 'api',
+            #     'backend', 'frontend', 'kod', 'deployment', 'hosting',
+            #     'drukarka', 'komputer', 'laptop', 'sieć', 'wifi', 'internet'
+            # ],
+            # 'user_action': [
+            #     'zainstalować', 'naprawić', 'zaktualizować', 'sprawdzić',
+            #     'zresetować', 'skonfigurować', 'dodać', 'usunąć', 'zmienić'
+            # ]
         }
         
         # Połącz wszystkie słowa kluczowe
@@ -163,15 +192,16 @@ class KeywordExtractor:
         if priority_scores['priority_high'] > 0:
             priority = 2
             reason = "Wykryto słowa kluczowe wysokiego priorytetu"
-            confidence = min(priority_scores['priority_high'] / 5, 1.0)
+            # Improved confidence calculation - 1 keyword = 0.7, 2+ = 0.95
+            confidence = min(0.7 + (priority_scores['priority_high'] - 1) * 0.25, 0.95)
         elif priority_scores['priority_medium'] > priority_scores['priority_low']:
             priority = 1
             reason = "Wykryto słowa kluczowe średniego priorytetu"
-            confidence = min(priority_scores['priority_medium'] / 3, 1.0)
+            confidence = min(0.65 + (priority_scores['priority_medium'] - 1) * 0.15, 0.85)
         else:
             priority = 0
             reason = "Brak słów kluczowych wysokiego priorytetu"
-            confidence = 0.5
+            confidence = 0.6
         
         return {
             'priority': priority,
