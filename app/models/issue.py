@@ -42,13 +42,13 @@ class Issue(Document):
     assigned_to = ReferenceField(User, null=True)
     duplicate_of = ReferenceField('self', null=True)  # Referencja do oryginalnego zgłoszenia jeśli jest duplikatem
     duplicates = ListField(ReferenceField('self'))  # Lista zduplikowanych zgłoszeń
-    created_at = DateTimeField(default=lambda: datetime.now(UTC))
-    updated_at = DateTimeField(default=lambda: datetime.now(UTC))
+    created_at = DateTimeField(default=lambda: datetime.utcnow())
+    updated_at = DateTimeField(default=lambda: datetime.utcnow())
     resolved_at = DateTimeField(null=True)
-    reminder_time = DateTimeField(default=lambda: datetime.now(UTC) + timedelta(seconds=30))
+    reminder_time = DateTimeField(default=lambda: datetime.utcnow() + timedelta(days=7))
 
     def build_title(self):
-        timestamp = self.created_at or datetime.now(UTC)
+        timestamp = self.created_at or datetime.utcnow()
         created_part = timestamp.strftime('%Y%m%d-%H%M%S')
         issue_id = str(self.id) if self.id else 'noid'
         short_id = issue_id[-6:]

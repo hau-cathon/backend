@@ -1,5 +1,5 @@
 """Issue routes - basic CRUD operations"""
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from app.models.issue import Issue
 from app.models.user import User
 from datetime import datetime
@@ -73,6 +73,7 @@ def create_issue():
     """Create new issue"""
     try:
         data = request.get_json()
+        current_app.logger.info(f"Creating issue with data: {data}")
         
         # Required fields validation
         required_fields = ['event_type', 'species', 'incident_address']
@@ -84,29 +85,47 @@ def create_issue():
                 }), 400
         
         # Create issue
-            reminder_time = data.get('reminder_time')
-            if reminder_time:
-                reminder_time = datetime.fromisoformat(reminder_time)
-            else:
-                reminder_time = datetime.utcnow() + timedelta(days=7)
-            issue = Issue(
-                event_type=data['event_type'],
-                species=data['species'],
-                incident_address=data['incident_address'],
-                animal_count=data.get('animal_count', 1),
-                options=data.get('options', []),
-                urgency=data.get('urgency', False),
-                media=data.get('media', []),
-                contact_phone=data.get('contact_phone'),
-                description=data.get('description'),
-                status=data.get('status', 'open'),
-                reminder_time=reminder_time
-            )
+        reminder_time = data.get('reminder_time')
+        if reminder_time:
+            reminder_time = datetime.fromisoformat(reminder_time)
+        else:
+            reminder_time = datetime.utcnow() + timedelta(days=7)
         
+        current_app.logger.info(f"Creating Issue object...")
+        issue = Issue(
+            event_type=data['event_type'],
+            species=data['species'],
+            incident_address=data['incident_address'],
+            animal_count=data.get('animal_count', 1),
+            options=data.get('options', []),
+            urgency=data.get('urgency', False),
+            media=data.get('media', []),
+            contact_phone=data.get('contact_phone'),
+            description=data.get('description'),
+            status=data.get('status', 'open'),
+            reminder_time=reminder_time
+        )
+        
+        current_app.logger.info(f"Saving issue...")
         issue.save()
+        current_app.logger.info(f"Issue saved with ID: {issue.id}")
+        
+        current_app.logger.info(f"Building title...")
         issue.title = issue.build_title()
         issue.save()
+        current_app.logger.info(f"Issue title: {issue.title}")
         
+        # Check for duplicates asynchronously (don't block response)
+        try:
+            from app.utils.duplicateDetectorUltimate import check_new_issue_duplicate
+            current_app.logger.info(f"Checking duplicates...")
+            check_new_issue_duplicate(issue)
+            current_app.logger.info(f"Duplicate check completed for issue {issue.id}")
+        except Exception as e:
+            # Log error but don't fail the request
+            current_app.logger.error(f"Error checking duplicates for issue {issue.id}: {str(e)}")
+        
+        current_app.logger.info(f"Returning success response for issue {issue.id}")
         return jsonify({
             'status': 'success',
             'message': 'Issue created successfully',
@@ -114,11 +133,13 @@ def create_issue():
         }), 201
         
     except ValidationError as e:
+        current_app.logger.error(f"ValidationError: {str(e)}")
         return jsonify({
             'status': 'error',
             'error': f'Validation error: {str(e)}'
         }), 400
     except Exception as e:
+        current_app.logger.error(f"Exception in create_issue: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
             'error': str(e)
