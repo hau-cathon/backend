@@ -8,9 +8,9 @@ from bson import ObjectId
 duplicate_bp = Blueprint('duplicates', __name__)
 
 
-@duplicate_bp.route('/check/<issue_id>', methods=['GET'])
+@duplicate_bp.route('/check/<issue_identifier>', methods=['GET'])
 # @jwt_required()
-def check_duplicates(issue_id):
+def check_duplicates(issue_identifier):
     """
     Sprawdza potencjalne duplikaty dla danego zgłoszenia
     
@@ -19,15 +19,18 @@ def check_duplicates(issue_id):
         threshold: próg podobieństwa 0-1 (domyślnie 0.7)
     """
     try:
-        # Walidacja issue_id
-        if not ObjectId.is_valid(issue_id):
-            return jsonify({
-                'status': 'error',
-                'error': 'Nieprawidłowe ID zgłoszenia'
-            }), 400
-        
-        # Pobierz zgłoszenie
-        issue = Issue.objects(id=issue_id).first()
+        # Znajdź issue po ticket_number lub MongoDB ID
+        issue = Issue.objects(ticket_number=issue_identifier).first()
+        if not issue:
+            # Walidacja issue_id
+            if not ObjectId.is_valid(issue_identifier):
+                return jsonify({
+                    'status': 'error',
+                    'error': 'Nieprawidłowe ID zgłoszenia'
+                }), 400
+            
+            # Pobierz zgłoszenie
+            issue = Issue.objects(id=issue_identifier).first()
         
         if not issue:
             return jsonify({
@@ -58,7 +61,8 @@ def check_duplicates(issue_id):
         
         return jsonify({
             'status': 'success',
-            'issue_id': issue_id,
+            'issue_id': str(issue.id),
+            'ticket_number': issue.ticket_number,
             'duplicates_found': len(duplicates),
             'duplicates': duplicates,
             'search_params': {
@@ -97,16 +101,24 @@ def compare_issues():
         issue_id_1 = data['issue_id_1']
         issue_id_2 = data['issue_id_2']
         
-        # Walidacja
-        if not ObjectId.is_valid(issue_id_1) or not ObjectId.is_valid(issue_id_2):
-            return jsonify({
-                'status': 'error',
-                'error': 'Nieprawidłowe ID zgłoszenia'
-            }), 400
+        # Znajdź issues po ticket_number lub MongoDB ID
+        issue1 = Issue.objects(ticket_number=issue_id_1).first()
+        if not issue1:
+            if not ObjectId.is_valid(issue_id_1):
+                return jsonify({
+                    'status': 'error',
+                    'error': 'Nieprawidłowe ID pierwszego zgłoszenia'
+                }), 400
+            issue1 = Issue.objects(id=issue_id_1).first()
         
-        # Pobierz zgłoszenia
-        issue1 = Issue.objects(id=issue_id_1).first()
-        issue2 = Issue.objects(id=issue_id_2).first()
+        issue2 = Issue.objects(ticket_number=issue_id_2).first()
+        if not issue2:
+            if not ObjectId.is_valid(issue_id_2):
+                return jsonify({
+                    'status': 'error',
+                    'error': 'Nieprawidłowe ID drugiego zgłoszenia'
+                }), 400
+            issue2 = Issue.objects(id=issue_id_2).first()
         
         if not issue1 or not issue2:
             return jsonify({

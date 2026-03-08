@@ -13,6 +13,11 @@ class Issue(Document):
     
     title = StringField(required=True, max_length=200)
     description = StringField(required=True)
+    
+    # Email tracking
+    reporter_email = EmailField()  # Email zgłaszającego
+    ticket_number = StringField(unique=True, sparse=True, max_length=50)  # e.g., "ZGL-12345"
+    
     status = StringField(
         required=True, 
         choices=['open', 'in_progress', 'resolved', 'closed'],
@@ -22,7 +27,7 @@ class Issue(Document):
         choices=['low', 'medium', 'high', 'critical'],
         default='medium'
     )
-    user = ReferenceField(User, required=True)
+    user = ReferenceField(User, required=False, null=True)
     assigned_to = ReferenceField(User, null=True)
     tags = ListField(StringField(max_length=50))
     created_at = DateTimeField(default=datetime.utcnow)
@@ -35,6 +40,8 @@ class Issue(Document):
             'id': str(self.id),
             'title': self.title,
             'description': self.description,
+            'reporter_email': self.reporter_email,
+            'ticket_number': self.ticket_number,
             'status': self.status,
             'priority': self.priority,
             'user_id': str(self.user.id) if self.user else None,
