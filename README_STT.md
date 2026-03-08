@@ -247,7 +247,8 @@ MONGODB_SETTINGS=mongodb://localhost:27017/your_db
 JWT_SECRET_KEY=your-jwt-secret
 
 # CORS
-CORS_ORIGINS=*
+# local = localhost + 127.0.0.1 + lokalne IP (10.x / 172.16-31.x / 192.168.x)
+CORS_ORIGINS=local
 
 # STT Model (tiny, base, small, medium, large)
 WHISPER_MODEL_SIZE=base

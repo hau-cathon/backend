@@ -7,6 +7,12 @@ Local development quick start:
 2. Start API:
 	 `python run.py`
 
+Environment note (CORS):
+
+- In your `.env` use `CORS_ORIGINS=local` for development.
+- `local` allows browser calls from `localhost`, `127.0.0.1` and local LAN IPs (for example Expo on `192.168.x.x`).
+- If needed for quick debugging only, set `CORS_ORIGINS=*`.
+
 Seed sample data in MongoDB:
 
 - Idempotent seed for demo records only:
