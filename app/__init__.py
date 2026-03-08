@@ -10,8 +10,6 @@ def create_app(config_class=Config):
     init_db(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
-
-    from .routes.auth_routes import auth_bp
     from .routes.user_routes import user_bp
     from .routes.model_routes import model_bp
     from .routes.email_routes import email_bp
@@ -23,7 +21,6 @@ def create_app(config_class=Config):
 
     app.register_blueprint(duplicate_bp, url_prefix='/api/duplicates')
     app.register_blueprint(email_bp, url_prefix='/api/email')
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(model_bp, url_prefix="/api/model")
     app.register_blueprint(issue_bp, url_prefix="/api/issues")

@@ -23,10 +23,11 @@ def get_user(user_id):
 
 
 @user_bp.route('/me', methods=['GET'])
-@jwt_required()
 def get_current_user():
-    """Get current logged in user"""
-    user_id = get_jwt_identity()
+    """Get current logged in user - requires user_id in query params"""
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'user_id query parameter required'}), 400
     try:
         user = User.objects.get(id=user_id)
         return jsonify(user.to_dict()), 200
