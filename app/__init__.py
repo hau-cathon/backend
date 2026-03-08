@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from .config import Config
 from .extensions import init_db, jwt, cors
+from .utils.websocket_handler import socketio
 
 
 def create_app(config_class=Config):
