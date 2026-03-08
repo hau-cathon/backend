@@ -1,11 +1,9 @@
-"""User model"""
-from mongoengine import Document, StringField, EmailField, DateTimeField, ReferenceField, ListField
+from mongoengine import Document, StringField, EmailField, DateTimeField
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class User(Document):
-    """User document"""
     meta = {
         'collection': 'users',
         'indexes': ['email', 'username']
@@ -18,15 +16,12 @@ class User(Document):
     updated_at = DateTimeField(default=datetime.utcnow)
     
     def set_password(self, password):
-        """Hash and set password"""
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
-        """Check if password matches hash"""
         return check_password_hash(self.password_hash, password)
     
     def to_dict(self):
-        """Convert user to dictionary"""
         return {
             'id': str(self.id),
             'email': self.email,
