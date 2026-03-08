@@ -11,7 +11,7 @@ from app.services.action_history_service import ActionHistoryService
 from app.utils.SMTP import send_email
 from ..utils.email_reader import read_unread_emails, mark_as_read
 
-email_bp = Blueprint('email', __name__)
+email_bp = Blueprint('email_api', __name__)
 
 
 def _is_smtp_configured() -> bool:
@@ -46,7 +46,7 @@ def _resolve_issue_ref(ticket_ref):
     return issue
 
 
-@email_bp.route('/ticket/<ticket_id>/history', methods=['GET'])
+@email_bp.route('/ticket/<ticket_id>/history', methods=['GET'], endpoint='ticket_history')
 def get_ticket_email_history(ticket_id):
     """Get persisted email history for a ticket."""
     try:
@@ -71,7 +71,7 @@ def get_ticket_email_history(ticket_id):
         }), 500
 
 
-@email_bp.route('/ticket/<ticket_id>/send', methods=['POST'])
+@email_bp.route('/ticket/<ticket_id>/send', methods=['POST'], endpoint='ticket_send')
 def send_ticket_email(ticket_id):
     """Send (or mock-send in dev) email for a ticket and persist it."""
     try:
@@ -161,7 +161,7 @@ def send_ticket_email(ticket_id):
         }), 500
 
 
-@email_bp.route('/check', methods=['GET'])
+@email_bp.route('/check', methods=['GET'], endpoint='check_mailbox')
 def check_emails():
     """Sprawdza i odczytuje nowe emaile"""
     try:
@@ -221,7 +221,7 @@ def check_emails():
         }), 500
 
 
-@email_bp.route('/mark-read/<email_id>', methods=['POST'])
+@email_bp.route('/mark-read/<email_id>', methods=['POST'], endpoint='mark_read')
 def mark_email_read(email_id):
     """Oznacza email jako przeczytany"""
     try:
