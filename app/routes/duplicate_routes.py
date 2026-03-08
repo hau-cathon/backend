@@ -20,7 +20,7 @@ def _issue_compare_text(issue):
     return ' '.join(part for part in parts if part).strip()
 
 
-@duplicate_bp.route('/check/<issue_id>', methods=['GET'])
+@duplicate_bp.route('/check/<issue_identifier>', methods=['GET'])
 # @jwt_required()
 def check_duplicates(issue_identifier):
     """
@@ -52,7 +52,7 @@ def check_duplicates(issue_identifier):
         
         # Pobierz parametry z query string
         days = request.args.get('days', default=7, type=int)
-        threshold = request.args.get('threshold', default=0.7, type=float)
+        threshold = request.args.get('threshold', default=0.32, type=float)
         
         # Walidacja parametrów
         if days < 1 or days > 365:

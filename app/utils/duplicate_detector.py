@@ -9,10 +9,11 @@ import numpy as np
 class DuplicateDetector:
     """Detects potential duplicate issues based on description similarity"""
     
-    def __init__(self, similarity_threshold=0.7):
+    def __init__(self, similarity_threshold=0.32):
         """
         Args:
             similarity_threshold: próg podobieństwa (0-1), powyżej którego uznajemy za duplikat
+            Default: 0.32 (32%) - adjusted for Polish text with TF-IDF
         """
         self.similarity_threshold = similarity_threshold
         self.vectorizer = TfidfVectorizer(
