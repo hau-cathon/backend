@@ -72,44 +72,47 @@ def get_issue(issue_id):
 def create_issue():
     """Create new issue"""
     try:
-        data = request.get_json()
-        
+        data = request.get_json() or {}
+
         # Required fields validation
         required_fields = ['event_type', 'species', 'incident_address']
         for field in required_fields:
-            if field not in data:
+            if not str(data.get(field, '')).strip():
                 return jsonify({
                     'status': 'error',
                     'error': f'Missing required field: {field}'
                 }), 400
-        
-        # Create issue
-            reminder_time = data.get('reminder_time')
-            if reminder_time:
-                reminder_time = datetime.fromisoformat(reminder_time)
-            else:
-                reminder_time = datetime.utcnow() + timedelta(days=7)
-            issue = Issue(
-                event_type=data['event_type'],
-                species=data['species'],
-                incident_address=data['incident_address'],
-                animal_count=data.get('animal_count', 1),
-                options=data.get('options', []),
-                urgency=data.get('urgency', False),
-                media=data.get('media', []),
-                contact_phone=data.get('contact_phone'),
-                description=data.get('description'),
-                status=data.get('status', 'open'),
-                reminder_time=reminder_time
-            )
-        
+
+        reminder_time = data.get('reminder_time')
+        if reminder_time:
+            reminder_time = datetime.fromisoformat(reminder_time)
+        else:
+            reminder_time = datetime.utcnow() + timedelta(days=7)
+
+        issue = Issue(
+            event_type=data['event_type'],
+            species=data['species'],
+            incident_address=data['incident_address'],
+            animal_count=data.get('animal_count', 1),
+            options=data.get('options', []),
+            urgency=data.get('urgency', False),
+            media=data.get('media', []),
+            contact_phone=data.get('contact_phone'),
+            description=data.get('description'),
+            status=data.get('status', 'open'),
+            reminder_time=reminder_time
+        )
+
         issue.save()
-        issue.title = issue.build_title()
+
+        # Preserve frontend-provided ticket title/number when present.
+        custom_title = str(data.get('title') or '').strip()
+        issue.title = custom_title or issue.build_title()
         issue.save()
 
         try:
             ActionHistoryService.create_action(
-                ticket_id=issue.title,
+                ticket_id=str(issue.id),
                 action_type='issue_created',
                 label='Utworzono zgłoszenie',
                 detail='Nowe zgłoszenie zostało zapisane w systemie.',
@@ -155,7 +158,8 @@ def update_issue(issue_id):
             issue.event_type = data['event_type']
         if 'species' in data:
             issue.species = data['species']
-            issue.title = issue.build_title()
+            if not issue.title:
+                issue.title = issue.build_title()
         if 'animal_count' in data:
             issue.animal_count = data['animal_count']
         if 'options' in data:
@@ -210,7 +214,7 @@ def update_issue(issue_id):
                 )
 
             ActionHistoryService.create_action(
-                ticket_id=issue.title or str(issue.id),
+                ticket_id=str(issue.id),
                 action_type='issue_updated',
                 label=label,
                 detail=detail,

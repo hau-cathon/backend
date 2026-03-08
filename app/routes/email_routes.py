@@ -1,9 +1,12 @@
 """Email routes for inbox checks and ticket communication history."""
 from datetime import datetime
+from bson import ObjectId
+from mongoengine.queryset.visitor import Q
 
 from flask import Blueprint, jsonify, request, current_app
 
 from app.models.email_message import EmailMessage
+from app.models.issue import Issue
 from app.services.action_history_service import ActionHistoryService
 from app.utils.SMTP import send_email
 from ..utils.email_reader import read_unread_emails, mark_as_read
@@ -28,11 +31,34 @@ def _safe_log_action(**kwargs):
         pass
 
 
+def _resolve_issue_ref(ticket_ref):
+    value = str(ticket_ref or '').strip()
+    if not value:
+        return None
+
+    issue = None
+    if ObjectId.is_valid(value):
+        issue = Issue.objects(id=value).first()
+
+    if issue is None:
+        issue = Issue.objects(title=value).first()
+
+    return issue
+
+
 @email_bp.route('/ticket/<ticket_id>/history', methods=['GET'])
 def get_ticket_email_history(ticket_id):
     """Get persisted email history for a ticket."""
     try:
-        emails = EmailMessage.objects(ticket_id=ticket_id).order_by('-created_at')
+        issue = _resolve_issue_ref(ticket_id)
+        query = Q(ticket_id=ticket_id)
+
+        if issue is not None:
+            query = query | Q(issue=issue)
+            if issue.title:
+                query = query | Q(ticket_id=issue.title)
+
+        emails = EmailMessage.objects(query).order_by('-created_at')
         return jsonify({
             'status': 'success',
             'count': len(emails),
@@ -64,6 +90,11 @@ def send_ticket_email(ticket_id):
         html_body = data.get('html_body')
         cc_emails = str(data.get('cc_emails', '')).strip() or None
         is_automated = bool(data.get('is_automated', False))
+        issue = _resolve_issue_ref(ticket_id)
+
+        stored_ticket_id = str(ticket_id)
+        if issue is not None:
+            stored_ticket_id = str(issue.id)
 
         smtp_configured = _is_smtp_configured()
         delivery_mode = 'mock'
@@ -74,7 +105,8 @@ def send_ticket_email(ticket_id):
             delivery_mode = 'smtp' if sent_ok else 'smtp_failed'
 
         email = EmailMessage(
-            ticket_id=ticket_id,
+            ticket_id=stored_ticket_id,
+            issue=issue,
             direction='outbound',
             from_email=(current_app.config.get('MAIL_USERNAME') or 'noreply@animalhelper.local'),
             to_email=to_email,
@@ -93,7 +125,7 @@ def send_ticket_email(ticket_id):
 
         timeline_type = 'success' if sent_ok else 'alert'
         _safe_log_action(
-            ticket_id=ticket_id,
+            ticket_id=stored_ticket_id,
             action_type='email_sent',
             label='Wyslano wiadomosc email' if sent_ok else 'Nieudana wysylka email',
             detail=f'Do: {to_email} | Temat: {subject}',
