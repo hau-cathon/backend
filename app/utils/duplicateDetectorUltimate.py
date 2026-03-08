@@ -36,4 +36,5 @@ def check_new_issue_duplicate(new_issue):
         if similarity >= 0.7:
             duplicates.append(issue)
 
-    return duplicates
+    new_issue.duplicates = duplicates
+    new_issue.save()
