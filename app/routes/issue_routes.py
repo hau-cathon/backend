@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from app.models.issue import Issue
 from app.models.user import User
 from datetime import datetime
+from datetime import datetime, timedelta
 from mongoengine.errors import ValidationError, DoesNotExist
 
 issue_bp = Blueprint('issues', __name__)
@@ -83,18 +84,24 @@ def create_issue():
                 }), 400
         
         # Create issue
-        issue = Issue(
-            event_type=data['event_type'],
-            species=data['species'],
-            incident_address=data['incident_address'],
-            animal_count=data.get('animal_count', 1),
-            options=data.get('options', []),
-            urgency=data.get('urgency', False),
-            media=data.get('media', []),
-            contact_phone=data.get('contact_phone'),
-            description=data.get('description'),
-            status=data.get('status', 'open')
-        )
+            reminder_time = data.get('reminder_time')
+            if reminder_time:
+                reminder_time = datetime.fromisoformat(reminder_time)
+            else:
+                reminder_time = datetime.utcnow() + timedelta(days=7)
+            issue = Issue(
+                event_type=data['event_type'],
+                species=data['species'],
+                incident_address=data['incident_address'],
+                animal_count=data.get('animal_count', 1),
+                options=data.get('options', []),
+                urgency=data.get('urgency', False),
+                media=data.get('media', []),
+                contact_phone=data.get('contact_phone'),
+                description=data.get('description'),
+                status=data.get('status', 'open'),
+                reminder_time=reminder_time
+            )
         
         issue.save()
         issue.title = issue.build_title()
@@ -149,6 +156,8 @@ def update_issue(issue_id):
             issue.status = data['status']
             if data['status'] == 'resolved':
                 issue.resolved_at = datetime.utcnow()
+            if 'reminder_time' in data:
+                issue.reminder_time = datetime.fromisoformat(data['reminder_time'])
         if 'assigned_to' in data:
             try:
                 assigned_user = User.objects.get(id=data['assigned_to'])

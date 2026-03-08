@@ -11,7 +11,12 @@ def create_app(config_class=Config):
     init_db(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
+    
+    # Initialize WebSocket
+    from .utils.websocket_handler import socketio
     socketio.init_app(app)
+    
+    # Register blueprints
     from .routes.model_routes import model_bp
     from .routes.email_routes import email_bp
     from .routes.duplicate_routes import duplicate_bp
@@ -19,6 +24,8 @@ def create_app(config_class=Config):
     from .routes.email_case_type_routes import email_case_type_bp
     from .routes.email_template_routes import email_template_bp
     from .routes.template_option_routes import template_option_bp
+    from .routes.stt_routes import stt_bp
+    from .routes.form_routes import form_bp
 
     app.register_blueprint(duplicate_bp, url_prefix='/api/duplicates')
     app.register_blueprint(email_bp, url_prefix='/api/email')
@@ -27,7 +34,10 @@ def create_app(config_class=Config):
     app.register_blueprint(email_case_type_bp, url_prefix="/api/email-case-types")
     app.register_blueprint(email_template_bp, url_prefix="/api/email-templates")
     app.register_blueprint(template_option_bp, url_prefix="/api/template-options")
-
+    app.register_blueprint(stt_bp, url_prefix="/api/stt")
+    app.register_blueprint(form_bp, url_prefix="/api/form")
+    
+    # Register error handlers
     register_error_handlers(app)
 
     @app.shell_context_processor
