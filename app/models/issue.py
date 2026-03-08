@@ -1,12 +1,13 @@
-from mongoengine import BooleanField, DateTimeField, Document, IntField, ListField, ReferenceField, StringField
-from datetime import datetime, timedelta, UTC
+from mongoengine import BooleanField, DateTimeField, Document, EmailField, IntField, ListField, ReferenceField, StringField
+from datetime import datetime, timedelta
+from datetime import timedelta
 from app.models.user import User
 
 
 class Issue(Document):
     meta = {
         'collection': 'issues',
-        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user', 'title']
+        'indexes': ['event_type', 'species', 'urgency', 'status', 'created_at', 'user', 'title', 'ticket_number']
     }
 
     event_type = StringField(
@@ -27,6 +28,10 @@ class Issue(Document):
     ticket_number = StringField(max_length=50)
 
     description = StringField(max_length=2000)
+    
+    # Email tracking
+    reporter_email = EmailField()
+    ticket_number = StringField(unique=True, sparse=True, max_length=50)
 
     status = StringField(
         required=True,
