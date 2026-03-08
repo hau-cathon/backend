@@ -1,5 +1,6 @@
 from mongoengine import BooleanField, DateTimeField, Document, IntField, ListField, ReferenceField, StringField
-from datetime import datetime
+from datetime import datetime, timedelta
+from datetime import timedelta
 from app.models.user import User
 
 
@@ -37,6 +38,7 @@ class Issue(Document):
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     resolved_at = DateTimeField(null=True)
+    reminder_time = DateTimeField(default=lambda: datetime.utcnow() + timedelta(seconds=30))
 
     def to_dict(self):
         return {
@@ -57,7 +59,8 @@ class Issue(Document):
             'duplicates_ids': [str(dup.id) for dup in self.duplicates] if self.duplicates else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'reminder_time': self.reminder_time.isoformat() if self.reminder_time else None
         }
 
     def __repr__(self):
