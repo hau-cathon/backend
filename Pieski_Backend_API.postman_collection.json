@@ -1,0 +1,677 @@
+{
+  "info": {
+    "_postman_id": "c4dd4df8-9b8f-4e9e-8c35-5de30ef9ed30",
+    "name": "Pieski Backend API",
+    "description": "Postman collection for the Flask backend endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:5000" },
+    { "key": "issue_id", "value": "" },
+    { "key": "issue_id_2", "value": "" },
+    { "key": "email_id", "value": "" },
+    { "key": "case_type_id", "value": "" },
+    { "key": "template_id", "value": "" },
+    { "key": "option_id", "value": "" },
+    { "key": "duplicate_id", "value": "" },
+    { "key": "code", "value": "ANIMAL_RESCUE" },
+    { "key": "animal_type", "value": "pies" }
+  ],
+  "item": [
+    {
+      "name": "Active - Duplicate",
+      "item": [
+        {
+          "name": "Check Duplicates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/duplicates/check/{{issue_id}}?days=7&threshold=0.7",
+              "host": ["{{base_url}}"],
+              "path": ["api", "duplicates", "check", "{{issue_id}}"],
+              "query": [
+                { "key": "days", "value": "7" },
+                { "key": "threshold", "value": "0.7" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Compare Issues",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"issue_id_1\": \"{{issue_id}}\",\n  \"issue_id_2\": \"{{issue_id_2}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/duplicates/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "duplicates", "compare"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Email",
+      "item": [
+        {
+          "name": "Check Unread Emails",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email/check",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email", "check"]
+            }
+          }
+        },
+        {
+          "name": "Mark Email Read",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/email/mark-read/{{email_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email", "mark-read", "{{email_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Model",
+      "item": [
+        {
+          "name": "Predict Priority",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Potracony pies na ulicy, potrzebna pilna pomoc.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/model/predict",
+              "host": ["{{base_url}}"],
+              "path": ["api", "model", "predict"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Issues",
+      "item": [
+        {
+          "name": "Get Issues",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/issues/?event_type=&species=&status=&urgency=&user_id=",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", ""],
+              "query": [
+                { "key": "event_type", "value": "" },
+                { "key": "species", "value": "" },
+                { "key": "status", "value": "" },
+                { "key": "urgency", "value": "" },
+                { "key": "user_id", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Issue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.issue && jsonData.issue.id) {",
+                  "  pm.collectionVariables.set('issue_id', jsonData.issue.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"bezdomne_zwierze\",\n  \"species\": \"pies\",\n  \"incident_address\": \"ul. Przykladowa 10, Warszawa\",\n  \"animal_count\": 1,\n  \"options\": [\"ranny\"],\n  \"urgency\": true,\n  \"media\": [],\n  \"contact_phone\": \"+48123456789\",\n  \"description\": \"Pies lezy przy drodze i potrzebuje pomocy.\",\n  \"status\": \"open\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Issue By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", "{{issue_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Issue",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"description\": \"Aktualizacja opisu po telefonie od zglaszajacego.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", "{{issue_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Issue",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/issues/{{issue_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", "{{issue_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Issue Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/issues/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "issues", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Email Case Types",
+      "item": [
+        {
+          "name": "Get Case Types",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/?is_active=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", ""],
+              "query": [{ "key": "is_active", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Create Case Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.case_type && jsonData.case_type.id) {",
+                  "  pm.collectionVariables.set('case_type_id', jsonData.case_type.id);",
+                  "  pm.collectionVariables.set('code', jsonData.case_type.code || 'ANIMAL_RESCUE');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ANIMAL_RESCUE\",\n  \"label\": \"Animal Rescue\",\n  \"description\": \"Interwencja dla zwierzat\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Case Type By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/{{case_type_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", "{{case_type_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Case Type By Code",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/code/{{code}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", "code", "{{code}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Case Type",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Animal Rescue Updated\",\n  \"description\": \"Zmieniony opis typu sprawy\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/{{case_type_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", "{{case_type_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Case Type",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/email-case-types/{{case_type_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-case-types", "{{case_type_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Template Options",
+      "item": [
+        {
+          "name": "Get Template Options",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/template-options/?animal_type=&case_type=",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", ""],
+              "query": [
+                { "key": "animal_type", "value": "" },
+                { "key": "case_type", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Template Option",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.option && jsonData.option.id) {",
+                  "  pm.collectionVariables.set('option_id', jsonData.option.id);",
+                  "  pm.collectionVariables.set('animal_type', jsonData.option.animal_type || 'pies');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"animal_type\": \"pies\",\n  \"case_type\": \"ranny\",\n  \"case_label\": \"Ranny pies\",\n  \"description\": \"Pies z widocznym urazem lapy\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/template-options/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Template Option By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/template-options/{{option_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", "{{option_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Animal Types",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/template-options/animal-types",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", "animal-types"]
+            }
+          }
+        },
+        {
+          "name": "Get Options By Animal",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/template-options/animal/{{animal_type}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", "animal", "{{animal_type}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Template Option",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Zmieniony opis opcji szablonu\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/template-options/{{option_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", "{{option_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Template Option",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/template-options/{{option_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "template-options", "{{option_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active - Email Templates",
+      "item": [
+        {
+          "name": "Get Email Templates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/?case_type_id=&is_active=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", ""],
+              "query": [
+                { "key": "case_type_id", "value": "" },
+                { "key": "is_active", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Email Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.template && jsonData.template.id) {",
+                  "  pm.collectionVariables.set('template_id', jsonData.template.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Interwencja pies\",\n  \"case_type_id\": \"{{case_type_id}}\",\n  \"title\": \"Zgloszenie interwencji\",\n  \"body\": \"Dzien dobry, zglaszam {case_label}. Zwierze: {animal_type}. Szczegoly: {description}\",\n  \"description\": \"Szablon dla interwencji\",\n  \"placeholders\": \"animal_type,case_label,description\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", ""]
+            }
+          }
+        },
+        {
+          "name": "Get Email Template By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", "{{template_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Email Template",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Zaktualizowany temat maila\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", "{{template_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Email Template",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", "{{template_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Generate Final Email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"option_id\": \"{{option_id}}\",\n  \"replacements\": {\n    \"{custom_placeholder}\": \"custom value\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/email-templates/{{template_id}}/generate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "email-templates", "{{template_id}}", "generate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Not Registered In create_app (will 404 until blueprint is registered)",
+      "description": "These routes exist in code but are currently not registered in app/__init__.py.",
+      "item": [
+        {
+          "name": "STT - Transcribe Audio",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "audio", "type": "file", "src": "" },
+                { "key": "language", "value": "pl", "type": "text" },
+                { "key": "analyze", "value": "true", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/transcribe",
+              "host": ["{{base_url}}"],
+              "path": ["transcribe"]
+            }
+          }
+        },
+        {
+          "name": "STT - Analyze Full",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "audio", "type": "file", "src": "" },
+                { "key": "language", "value": "pl", "type": "text" },
+                { "key": "check_duplicates", "value": "true", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/analyze-full",
+              "host": ["{{base_url}}"],
+              "path": ["analyze-full"]
+            }
+          }
+        },
+        {
+          "name": "STT - Text Analyze",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Widzialem rannego psa przy ul. Lesnej 12\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/text-analyze",
+              "host": ["{{base_url}}"],
+              "path": ["text-analyze"]
+            }
+          }
+        },
+        {
+          "name": "Form - Generate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Widzialem kota zamknietego w garazu przy ul. Kwiatowej\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/generate",
+              "host": ["{{base_url}}"],
+              "path": ["generate"]
+            }
+          }
+        },
+        {
+          "name": "Form - Template",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/template",
+              "host": ["{{base_url}}"],
+              "path": ["template"]
+            }
+          }
+        },
+        {
+          "name": "Issue Duplicate - Mark Duplicate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duplicate_issue_id\": \"{{issue_id_2}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/issues/{{issue_id}}/duplicates",
+              "host": ["{{base_url}}"],
+              "path": ["issues", "{{issue_id}}", "duplicates"]
+            }
+          }
+        },
+        {
+          "name": "Issue Duplicate - Merge",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": [\"description\", \"contact_phone\", \"media\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/duplicates/{{duplicate_id}}/merge",
+              "host": ["{{base_url}}"],
+              "path": ["duplicates", "{{duplicate_id}}", "merge"]
+            }
+          }
+        },
+        {
+          "name": "Issue Duplicate - Reject",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Not a real duplicate\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/duplicates/{{duplicate_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["duplicates", "{{duplicate_id}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Issue Duplicate - Get Issue Duplicates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/issues/{{issue_id}}/duplicates",
+              "host": ["{{base_url}}"],
+              "path": ["issues", "{{issue_id}}", "duplicates"]
+            }
+          }
+        },
+        {
+          "name": "Issue Duplicate - Get Pending",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/duplicates/pending",
+              "host": ["{{base_url}}"],
+              "path": ["duplicates", "pending"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
