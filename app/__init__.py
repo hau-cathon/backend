@@ -42,14 +42,25 @@ def create_app(config_class=Config):
 
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import User, Issue, IssueDuplicate, EmailCaseType, EmailTemplate, TemplateOption
+        from app.models import (
+            ActionHistoryEntry,
+            EmailCaseType,
+            EmailMessage,
+            EmailTemplate,
+            Issue,
+            IssueDuplicate,
+            TemplateOption,
+            User,
+        )
         return {
             'User': User,
             'Issue': Issue,
             'IssueDuplicate': IssueDuplicate,
             'EmailCaseType': EmailCaseType,
             'EmailTemplate': EmailTemplate,
-            'TemplateOption': TemplateOption
+            'TemplateOption': TemplateOption,
+            'ActionHistoryEntry': ActionHistoryEntry,
+            'EmailMessage': EmailMessage,
         }
     
     return app, socketio

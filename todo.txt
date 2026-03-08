@@ -20,3 +20,6 @@ options
 pilność 
 media
 miejsce zdarzenia
+
+rozdzielność tytułów w tickets
+Dopracować i podłączyć endpointy pod templatki
