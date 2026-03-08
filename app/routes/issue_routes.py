@@ -438,6 +438,91 @@ def reject_duplicate(issue_id):
         }), 500
 
 
+@issue_bp.route('/ticket/<ticket_id>/actions', methods=['GET'])
+def get_ticket_actions(ticket_id):
+    """Get action history timeline for a ticket."""
+    try:
+        try:
+            limit = int(request.args.get('limit', 200))
+        except (TypeError, ValueError):
+            limit = 200
+
+        # Keep payload size bounded and predictable.
+        limit = max(1, min(limit, 500))
+
+        actions = ActionHistoryService.list_actions(ticket_id, limit=limit)
+
+        return jsonify({
+            'status': 'success',
+            'ticket_id': str(ticket_id),
+            'count': len(actions),
+            'actions': [action.to_dict() for action in actions],
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+        }), 500
+
+
+@issue_bp.route('/ticket/<ticket_id>/actions', methods=['POST'])
+def create_ticket_action(ticket_id):
+    """Create a timeline action entry for a ticket."""
+    try:
+        data = request.get_json() or {}
+
+        required_fields = ['action_type', 'label', 'detail']
+        for field in required_fields:
+            if not str(data.get(field, '')).strip():
+                return jsonify({
+                    'status': 'error',
+                    'error': f'Missing required field: {field}'
+                }), 400
+
+        timeline_type = str(data.get('timeline_type', 'info')).strip() or 'info'
+        if timeline_type not in ['info', 'warning', 'success', 'alert']:
+            return jsonify({
+                'status': 'error',
+                'error': 'Invalid timeline_type. Allowed: info, warning, success, alert'
+            }), 400
+
+        metadata = data.get('metadata')
+        if metadata is None:
+            metadata = {}
+        elif not isinstance(metadata, dict):
+            return jsonify({
+                'status': 'error',
+                'error': 'metadata must be an object'
+            }), 400
+
+        action = ActionHistoryService.create_action(
+            ticket_id=str(ticket_id),
+            action_type=str(data['action_type']).strip(),
+            label=str(data['label']).strip(),
+            detail=str(data['detail']).strip(),
+            timeline_type=timeline_type,
+            source=str(data.get('source') or 'frontend').strip() or 'frontend',
+            actor_id=str(data.get('actor_id')).strip() if data.get('actor_id') is not None else None,
+            metadata=metadata,
+        )
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Action created successfully',
+            'action': action.to_dict(),
+        }), 201
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+        }), 500
+
+
 @issue_bp.route('/stats', methods=['GET'])
 def get_issue_stats():
     """Get issue statistics"""
