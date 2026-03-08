@@ -2,7 +2,7 @@ from app import create_app
 from mongoengine import get_connection
 import sys
 
-app = create_app()
+app, socketio = create_app()
 
 if __name__ == "__main__":
     # Test MongoDB connection (already connected in init_db)
