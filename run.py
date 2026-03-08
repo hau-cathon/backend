@@ -5,7 +5,7 @@ import threading
 import time
 from app.models.issue import Issue
 from app.utils.websocket_handler import socketio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 app, socketio = create_app()
 
@@ -23,7 +23,7 @@ def create_test_issue():
             contact_phone='123456789',
             description='Testowe zgłoszenie',
             status='open',
-            reminder_time=datetime.utcnow() + timedelta(seconds=30)  # 30s na test
+            reminder_time=datetime.now(UTC) + timedelta(seconds=30)  # 30s na test
         )
         test_issue.save()
         print('Created test Issue:', test_issue.to_dict())
@@ -32,7 +32,7 @@ create_test_issue()
 
 def reminder_notifier():
     while True:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         issues = Issue.objects(reminder_time__lte=now)
         for issue in issues:
             print(f"Reminder notification for Issue ID: {issue.id}")

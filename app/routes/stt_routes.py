@@ -17,6 +17,39 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def map_incident_to_priority(incident_types, default_priority=1):
+    """
+    Maps incident types to priority levels
+    
+    Args:
+        incident_types: list of incident type strings
+        default_priority: fallback priority if no mapping found
+        
+    Returns:
+        int: priority (0=low, 1=medium, 2=critical) or None if no override
+    """
+    if not incident_types:
+        return None
+    
+    # Priority mapping for animal incidents
+    INCIDENT_PRIORITY_MAP = {
+        'ranny': 2,        # Injured animal - critical
+        'martwy': 2,       # Dead animal - critical
+        'agresywny': 2,    # Aggressive - critical (safety risk)
+        'zamkniety': 1,    # Trapped - medium
+        'glodny': 1,       # Hungry/neglected - medium
+        'zablakany': 0,    # Stray - low
+    }
+    
+    # Get highest priority from all detected incident types
+    priorities = [INCIDENT_PRIORITY_MAP.get(itype) for itype in incident_types if itype in INCIDENT_PRIORITY_MAP]
+    
+    if priorities:
+        return max(priorities)  # Return highest priority
+    
+    return None  # No override
+
+
 @stt_bp.route('/transcribe', methods=['POST'])
 def transcribe_audio():
     """
@@ -88,8 +121,41 @@ def transcribe_audio():
                 # Wyciągnij encje
                 entities = keyword_extractor.extract_entities(result['text'])
                 
-                # NOWE: Wyciągnij pola zwierzęce
-                animal_fields = animal_extractor.extract_all_fields(result['text'])
+                # NOWE: Wyciągnij pola zwierzęce z confidence
+                animal_fields_with_confidence = animal_extractor.extract_all_fields_with_confidence(result['text'])
+                
+                # Get ML priority prediction with confidence
+                from app.utils.model_predictor import predict_priority_with_confidence
+                priority_prediction = predict_priority_with_confidence(result['text'])
+                
+                # Map incident types to priority (fallback/override)
+                incident_types = animal_fields_with_confidence['fields']['incident_types']['value']
+                incident_priority = map_incident_to_priority(incident_types, priority_prediction.get('prediction', 1))
+                
+                # Use incident-based priority if we have high confidence in incident type
+                incident_conf = animal_fields_with_confidence['fields']['incident_types']['confidence']
+                if incident_conf >= 0.90 and incident_priority is not None:
+                    # Override ML prediction with rule-based priority
+                    priority_prediction['prediction'] = incident_priority
+                    priority_prediction['confidence'] = max(priority_prediction.get('confidence', 0.0), 0.85)
+                    priority_prediction['priority'] = {
+                        2: "potencjalnie krytyczny",
+                        1: "potencjalnie średni",
+                        0: "potencjalnie niski"
+                    }.get(incident_priority, "potencjalnie średni")
+                
+                # Calculate combined overall confidence
+                animal_conf = animal_fields_with_confidence['overall_confidence']
+                priority_conf = priority_prediction.get('confidence', 0.0)
+                
+                # If animal fields are very confident (>0.90), don't let priority drag it down too much
+                if animal_conf >= 0.90:
+                    combined_confidence = animal_conf * 0.90 + priority_conf * 0.10
+                else:
+                    combined_confidence = animal_conf * 0.80 + priority_conf * 0.20
+                
+                # Auto-fill only if confidence >= 85%, but never if < 50%
+                should_auto_fill = combined_confidence >= 0.85 and combined_confidence >= 0.50
                 
                 response_data['analysis'] = {
                     'keywords': keywords,
@@ -98,15 +164,29 @@ def transcribe_audio():
                     'entities': entities
                 }
                 
-                # NOWE: Dodaj pola zwierzęce
+                # NOWE: Dodaj pola zwierzęce z confidence
                 response_data['animal_fields'] = {
-                    'species': animal_fields['species'],
-                    'species_label': animal_extractor.get_species_label(animal_fields['species']),
-                    'location': animal_fields['location'],
-                    'incident_types': animal_fields['incident_types'],
-                    'incident_types_labels': [animal_extractor.get_incident_type_label(t) for t in animal_fields['incident_types']],
-                    'description': animal_fields['description']
+                    'species': animal_fields_with_confidence['fields']['species']['value'],
+                    'species_label': animal_extractor.get_species_label(animal_fields_with_confidence['fields']['species']['value']),
+                    'species_confidence': animal_fields_with_confidence['fields']['species']['confidence'],
+                    'location': animal_fields_with_confidence['fields']['location']['value'],
+                    'location_confidence': animal_fields_with_confidence['fields']['location']['confidence'],
+                    'incident_types': animal_fields_with_confidence['fields']['incident_types']['value'],
+                    'incident_types_labels': [animal_extractor.get_incident_type_label(t) for t in animal_fields_with_confidence['fields']['incident_types']['value']],
+                    'incident_types_confidence': animal_fields_with_confidence['fields']['incident_types']['confidence'],
+                    'description': animal_fields_with_confidence['fields']['description']['value'],
+                    'description_confidence': animal_fields_with_confidence['fields']['description']['confidence']
                 }
+                
+                response_data['priority_prediction'] = {
+                    'prediction': priority_prediction.get('prediction'),
+                    'priority': priority_prediction.get('priority'),
+                    'confidence': priority_prediction.get('confidence'),
+                    'all_probabilities': priority_prediction.get('all_probabilities')
+                }
+                
+                response_data['overall_confidence'] = combined_confidence
+                response_data['should_auto_fill'] = should_auto_fill
             
             return jsonify(response_data), 200
             

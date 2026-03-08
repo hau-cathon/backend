@@ -40,13 +40,28 @@ def get_prediction():
         vectorizer = joblib.load(vectorizer_path)
         
         vec = vectorizer.transform([text])
+        
+        # Get prediction and confidence scores
         prediction = int(model.predict(vec)[0])
+        probabilities = model.predict_proba(vec)[0]
+        
+        # Get confidence for the predicted class
+        confidence = float(probabilities[prediction])
+        
+        # Get all class probabilities
+        all_probabilities = {
+            'critical': float(probabilities[2]),
+            'medium': float(probabilities[1]),
+            'low': float(probabilities[0])
+        }
         
         priority_text = PRIORITY_MAPPING.get(prediction, "nieznany")
         
         return jsonify({
             'prediction': prediction,
             'priority': priority_text,
+            'confidence': confidence,
+            'all_probabilities': all_probabilities,
             'text': text,
             'status': 'success'
         }), 200

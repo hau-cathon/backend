@@ -45,6 +45,29 @@ class AnimalFieldExtractor:
         
         return None
     
+    def calculate_species_confidence(self, text):
+        """
+        Calculates confidence for species detection
+        
+        Returns:
+            float: confidence score 0.0-1.0
+        """
+        text_lower = text.lower()
+        matches = 0
+        
+        for species, keywords in self.animals.items():
+            for keyword in keywords:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
+                    matches += 1
+        
+        # High confidence if species keywords found
+        if matches >= 2:
+            return 0.99
+        elif matches == 1:
+            return 0.95
+        else:
+            return 0.0
+    
     def extract_location(self, text):
         """
         Wyciąga lokalizację z tekstu
@@ -85,6 +108,42 @@ class AnimalFieldExtractor:
         
         return None
     
+    def calculate_location_confidence(self, text):
+        """
+        Calculates confidence for location extraction
+        
+        Returns:
+            float: confidence score 0.0-1.0
+        """
+        text_lower = text.lower()
+        
+        # Wzorce dla konkretnych formatów adresów
+        patterns = [
+            r'(?:ulica|ul\.|ulicy)\s+([A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż\s]+?)(?:\s+\d+)?',
+            r'(?:przy|na|w)\s+(?:ulicy|ul\.)?\s*([A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż\s]+?)(?:\s+\d+)?',
+            r'(?:park|plac|osiedle)\s+([A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż\s]+?)',
+            r'adres[:\s]+([^.,]+)',
+        ]
+        
+        # High confidence for structured addresses
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                # Check if it includes street number
+                if re.search(r'\d+', match.group(0)):
+                    return 0.98  # Very high confidence
+                else:
+                    return 0.93  # Good confidence
+        
+        # Moderate confidence for general location keywords
+        keyword_count = sum(1 for kw in self.location_keywords if kw in text_lower)
+        if keyword_count >= 2:
+            return 0.85
+        elif keyword_count == 1:
+            return 0.75
+        else:
+            return 0.0
+    
     def extract_incident_type(self, text):
         """
         Określa typ zdarzenia
@@ -103,6 +162,31 @@ class AnimalFieldExtractor:
                     break
         
         return detected_types
+    
+    def calculate_incident_type_confidence(self, text):
+        """
+        Calculates confidence for incident type detection
+        
+        Returns:
+            float: confidence score 0.0-1.0
+        """
+        text_lower = text.lower()
+        matches = 0
+        
+        for incident_type, keywords in self.incident_types.items():
+            for keyword in keywords:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
+                    matches += 1
+        
+        # Higher confidence with more specific matches
+        if matches >= 3:
+            return 0.98
+        elif matches == 2:
+            return 0.94
+        elif matches == 1:
+            return 0.90
+        else:
+            return 0.0
     
     def extract_description(self, text):
         """
@@ -151,6 +235,74 @@ class AnimalFieldExtractor:
             'location': self.extract_location(text),
             'incident_types': self.extract_incident_type(text),
             'description': self.extract_description(text),
+            'full_text': text
+        }
+    
+    def extract_all_fields_with_confidence(self, text):
+        """
+        Ekstrachuje wszystkie pola wraz z confidence scores
+        
+        Returns:
+            dict: {
+                'fields': {
+                    'species': {'value': str, 'confidence': float},
+                    'location': {'value': str, 'confidence': float},
+                    'incident_types': {'value': list, 'confidence': float},
+                    'description': {'value': str, 'confidence': float}
+                },
+                'overall_confidence': float,
+                'should_auto_fill': bool
+            }
+        """
+        species = self.extract_animal_species(text)
+        location = self.extract_location(text)
+        incident_types = self.extract_incident_type(text)
+        description = self.extract_description(text)
+        
+        species_conf = self.calculate_species_confidence(text) if species else 0.0
+        location_conf = self.calculate_location_confidence(text) if location else 0.0
+        incident_conf = self.calculate_incident_type_confidence(text) if incident_types else 0.0
+        
+        # Description confidence is high if we have text
+        description_conf = 0.98 if description and len(description.strip()) > 10 else 0.7
+        
+        # Calculate overall confidence (weighted average)
+        # Species and incident type are more important
+        weights = {
+            'species': 0.35,
+            'location': 0.30,
+            'incident_types': 0.25,
+            'description': 0.10
+        }
+        
+        overall_confidence = (
+            species_conf * weights['species'] +
+            location_conf * weights['location'] +
+            incident_conf * weights['incident_types'] +
+            description_conf * weights['description']
+        )
+        
+        return {
+            'fields': {
+                'species': {
+                    'value': species,
+                    'confidence': species_conf
+                },
+                'location': {
+                    'value': location,
+                    'confidence': location_conf
+                },
+                'incident_types': {
+                    'value': incident_types,
+                    'confidence': incident_conf
+                },
+                'description': {
+                    'value': description,
+                    'confidence': description_conf
+                }
+            },
+            'overall_confidence': overall_confidence,
+            'should_auto_fill': overall_confidence >= 0.95,
             'full_text': text
         }
     
