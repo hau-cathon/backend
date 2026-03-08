@@ -5,7 +5,6 @@ import sys
 app, socketio = create_app()
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     # Test MongoDB connection (already connected in init_db)
     try:
         print("\n" + "=" * 60)
@@ -32,6 +31,3 @@ if __name__ == "__main__":
     
     # Start Flask server
     app.run(debug=True)
-=======
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
->>>>>>> b2ad6a1a9392e297ff157f7a9889db05b8fb065d
