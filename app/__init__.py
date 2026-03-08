@@ -6,11 +6,15 @@ from .extensions import init_db, jwt, cors
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
-    # Initialize extensions
+
     init_db(app)
     jwt.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": app.config['CORS_ORIGINS']}})
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> b2ad6a1a9392e297ff157f7a9889db05b8fb065d
     
     # Initialize WebSocket
     from .utils.websocket_handler import socketio
@@ -18,32 +22,55 @@ def create_app(config_class=Config):
     
     # Register blueprints
     from .routes.auth_routes import auth_bp
+>>>>>>> 4a013070d883cb0704b509532196fe7739905744
     from .routes.user_routes import user_bp
     from .routes.model_routes import model_bp
     from .routes.email_routes import email_bp
     from .routes.duplicate_routes import duplicate_bp
+<<<<<<< HEAD
+<<<<<<< HEAD
+    from .routes.issue_routes import issue_bp
+    from .routes.email_case_type_routes import email_case_type_bp
+    from .routes.email_template_routes import email_template_bp
+    from .routes.template_option_routes import template_option_bp
+=======
     from .routes.stt_routes import stt_bp
     from .routes.form_routes import form_bp
+>>>>>>> 4a013070d883cb0704b509532196fe7739905744
+=======
+    from .routes.stt_routes import stt_bp
+    from .routes.form_routes import form_bp
+>>>>>>> b2ad6a1a9392e297ff157f7a9889db05b8fb065d
 
     app.register_blueprint(duplicate_bp, url_prefix='/api/duplicates')
     app.register_blueprint(email_bp, url_prefix='/api/email')
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(model_bp, url_prefix="/api/model")
+<<<<<<< HEAD
+<<<<<<< HEAD
+    app.register_blueprint(issue_bp, url_prefix="/api/issues")
+    app.register_blueprint(email_case_type_bp, url_prefix="/api/email-case-types")
+    app.register_blueprint(email_template_bp, url_prefix="/api/email-templates")
+    app.register_blueprint(template_option_bp, url_prefix="/api/template-options")
+=======
     app.register_blueprint(stt_bp, url_prefix="/api/stt")
     app.register_blueprint(form_bp, url_prefix="/api/form")
+>>>>>>> 4a013070d883cb0704b509532196fe7739905744
+=======
+    app.register_blueprint(stt_bp, url_prefix="/api/stt")
+    app.register_blueprint(form_bp, url_prefix="/api/form")
+>>>>>>> b2ad6a1a9392e297ff157f7a9889db05b8fb065d
     
     # Register error handlers
     register_error_handlers(app)
-    
-    # Register shell context for flask shell command
+
     @app.shell_context_processor
     def make_shell_context():
-        from app.models import User, Role, Issue, EmailCaseType, EmailTemplate, TemplateOption
+        from app.models import User, Issue, IssueDuplicate, EmailCaseType, EmailTemplate, TemplateOption
         return {
             'User': User,
-            'Role': Role,
             'Issue': Issue,
+            'IssueDuplicate': IssueDuplicate,
             'EmailCaseType': EmailCaseType,
             'EmailTemplate': EmailTemplate,
             'TemplateOption': TemplateOption

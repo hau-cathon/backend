@@ -1,33 +1,46 @@
-"""Template Option model"""
-from mongoengine import Document, StringField, DateTimeField, ListField
+from mongoengine import Document, StringField, DateTimeField, ReferenceField
 from datetime import datetime
 
 
 class TemplateOption(Document):
-    """Email template with list of questions for a specific animal case"""
+    """
+    Pre-filled template values for specific case scenarios.
+    These values can be selected and inserted into EmailTemplate placeholders.
+    
+    Example:
+    - animal_type: "pies"
+    - case_type: "bezdomny"  
+    - description: "Pies bez domu znaleziony na ulicy"
+    
+    This can then be used to fill template: 
+    "Zgłaszam {animal_type} ({case_type}): {description}"
+    """
     meta = {
         'collection': 'template_options',
-        'indexes': ['animal_type', 'case_name']
+        'indexes': ['animal_type', 'case_type', 'case_type_ref']
     }
     
-    animal_type = StringField(required=True, max_length=50)  # e.g., "dog", "cat"
-    case_name = StringField(required=True, max_length=100)  # e.g., "aggressive", "injured"
-    case_label = StringField(required=True, max_length=200)  # e.g., "Pies agresywny" - for UI display
-    questions = ListField(StringField(required=True), required=True)  # List of questions to include in email
+    # Reference to EmailCaseType for organization
+    case_type_ref = ReferenceField('EmailCaseType', null=True)
+    
+    animal_type = StringField(required=True, max_length=50)  # e.g., "pies", "kot"
+    case_type = StringField(required=True, max_length=100)   # e.g., "bezdomny", "potrącony"
+    case_label = StringField(required=True, max_length=200)  # e.g., "Pies bez domu"
+    description = StringField(max_length=1000)               # detailed description
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
     
     def to_dict(self):
-        """Convert template to dictionary"""
         return {
             'id': str(self.id),
+            'case_type_ref_id': str(self.case_type_ref.id) if self.case_type_ref else None,
             'animal_type': self.animal_type,
-            'case_name': self.case_name,
+            'case_type': self.case_type,
             'case_label': self.case_label,
-            'questions': self.questions,
+            'description': self.description,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
     
     def __repr__(self):
-        return f'<TemplateOption {self.animal_type} - {self.case_name}>'
+        return f'<TemplateOption {self.animal_type} - {self.case_type}>'
